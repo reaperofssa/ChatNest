@@ -2,7 +2,7 @@ const express = require("express");
 const bodyParser = require("body-parser");
 const mongoose = require("mongoose");
 const axios = require("axios");
-const bcrypt = require("bcrypt");
+const bcrypt = require("bcryptjs");
 const FormData = require("form-data");
 const http = require("http");
 const { Server } = require("socket.io");
@@ -306,6 +306,7 @@ app.get("/friends/:username", async (req, res) => {
     return res.status(500).json({ error: "Internal server error" });
   }
 });
+
 io.on("connection", (socket) => {
   console.log("New client connected:", socket.id);
 
@@ -378,10 +379,13 @@ app.post("/message/:userid", async (req, res) => {
 
     await newMessage.save();
 
-    // Include sender username in WebSocket emit
+    // Include both sender and receiver username + name
     const emitMessage = {
       ...newMessage.toObject(),
-      senderUsername: sender.username
+      senderUsername: sender.username,
+      senderName: sender.name,
+      receiverUsername: receiver.username,
+      receiverName: receiver.name
     };
 
     io.to(`user_${sender.id}`).emit("newMessage", emitMessage);
@@ -394,7 +398,7 @@ app.post("/message/:userid", async (req, res) => {
   }
 });
 
-// Get messages route with 1-level replies and sender usernames
+// Get messages route with 1-level replies and both usernames + names
 app.get("/messages", async (req, res) => {
   try {
     const { userid, limit = 50, from, to } = req.query;
@@ -413,19 +417,25 @@ app.get("/messages", async (req, res) => {
     const messageIds = messages.map(msg => msg.id);
     const replies = await Message.find({ replyTo: { $in: messageIds } }).sort({ timestamp: 1 });
 
-    // Attach replies + sender usernames
+    // Attach replies + sender & receiver info
     const messagesWithReplies = await Promise.all(messages.map(async (msg) => {
       const sender = await User.findOne({ id: msg.senderId });
+      const receiver = await User.findOne({ id: msg.receiverId });
+
       const msgReplies = await Promise.all(
         replies
           .filter(r => r.replyTo === msg.id)
           .map(async (r) => {
             const replySender = await User.findOne({ id: r.senderId });
+            const replyReceiver = await User.findOne({ id: r.receiverId });
             return {
               id: r.id,
               senderId: r.senderId,
               senderUsername: replySender ? replySender.username : null,
+              senderName: replySender ? replySender.name : null,
               receiverId: r.receiverId,
+              receiverUsername: replyReceiver ? replyReceiver.username : null,
+              receiverName: replyReceiver ? replyReceiver.name : null,
               text: r.text,
               fileUrl: r.fileUrl,
               fileType: r.fileType,
@@ -434,11 +444,15 @@ app.get("/messages", async (req, res) => {
             };
           })
       );
+
       return {
         id: msg.id,
         senderId: msg.senderId,
         senderUsername: sender ? sender.username : null,
+        senderName: sender ? sender.name : null,
         receiverId: msg.receiverId,
+        receiverUsername: receiver ? receiver.username : null,
+        receiverName: receiver ? receiver.name : null,
         text: msg.text,
         fileUrl: msg.fileUrl,
         fileType: msg.fileType,
@@ -456,6 +470,6 @@ app.get("/messages", async (req, res) => {
 });
 
 // Start server
-app.listen(PORT, () => {
+server.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);
 });
