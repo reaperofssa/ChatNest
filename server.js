@@ -720,7 +720,8 @@ app.post("/groupmessage/:groupid", async (req, res) => {
   }
 });
 
-// Get group messages with repliesapp.get("/groupmessages/:groupid", async (req, res) => {
+// Get group messages with replies
+app.get("/groupmessages/:groupid", async (req, res) => {
   try {
     const { groupid } = req.params;
     const { limit = 50, from, to } = req.query;
