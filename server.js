@@ -114,7 +114,22 @@ const groupRequestSchema = new mongoose.Schema({
 });
 
 const GroupRequest = mongoose.model("GroupRequest", groupRequestSchema);
+const groupMessageSchema = new mongoose.Schema({
+  id: { type: String, unique: true },
+  groupId: { type: String, required: true },
+  senderId: { type: Number, required: true },
+  text: { type: String, default: "" },
+  fileUrl: { type: String, default: null },
+  fileType: { type: String, default: null },
+  timestamp: { type: Date, default: Date.now },
+  replyTo: { type: String, default: null }
+});
 
+groupMessageSchema.index({ groupId: 1 });
+groupMessageSchema.index({ senderId: 1 });
+groupMessageSchema.index({ replyTo: 1 });
+
+const GroupMessage = mongoose.model("GroupMessage", groupMessageSchema);
 // Register route
 app.post("/register", async (req, res) => {
   try {
@@ -341,8 +356,14 @@ app.get("/friends/:username", async (req, res) => {
 io.on("connection", (socket) => {
   console.log("New client connected:", socket.id);
 
-  socket.on("joinRoom", (userId) => {
+  // Join a user-specific room
+  socket.on("joinUserRoom", (userId) => {
     socket.join(`user_${userId}`);
+  });
+
+  // Join a group room
+  socket.on("joinGroupRoom", (groupId) => {
+    socket.join(`group_${groupId}`);
   });
 
   socket.on("disconnect", () => {
@@ -629,6 +650,124 @@ app.post("/join/:groupid", async (req, res) => {
     return res.status(200).json({ message: `Joined group ${group.name}` });
   } catch (err) {
     console.error("Error joining group:", err);
+    return res.status(500).json({ error: "Internal server error" });
+  }
+});
+app.post("/groupmessage/:groupid", async (req, res) => {
+  try {
+    const { groupid } = req.params;
+    const { authToken, text, replyTo, fileBase64, fileType } = req.body;
+
+    if (!authToken) return res.status(400).json({ error: "authToken is required" });
+
+    const sender = await User.findOne({ authToken });
+    if (!sender) return res.status(401).json({ error: "Invalid authToken" });
+
+    const group = await Group.findOne({ id: groupid });
+    if (!group) return res.status(404).json({ error: "Group not found" });
+
+    let messageId;
+    do {
+      messageId = generateMessageId();
+    } while (await GroupMessage.findOne({ id: messageId }));
+
+    let fileUrl = null;
+    if (fileBase64 && fileType) {
+      const buffer = Buffer.from(fileBase64, "base64");
+      if (buffer.length > 10 * 1024 * 1024)
+        return res.status(400).json({ error: "File size exceeds 10MB limit" });
+
+      let ext = fileType.split("/")[1] || "dat";
+      const fileName = `${messageId}.${ext}`;
+      const form = new FormData();
+      form.append("fileToUpload", buffer, fileName);
+
+      const catboxResponse = await axios.post("https://catbox.moe/user/api.php", form, {
+        headers: form.getHeaders(),
+        params: { reqtype: "fileupload", userhash: "" }
+      });
+
+      if (!catboxResponse.data) return res.status(500).json({ error: "Failed to upload file to Catbox" });
+      fileUrl = catboxResponse.data;
+    }
+
+    const newMessage = new GroupMessage({
+      id: messageId,
+      groupId: group.id,
+      senderId: sender.id,
+      text: text || "",
+      fileUrl,
+      fileType: fileType || null,
+      replyTo: replyTo || null
+    });
+
+    await newMessage.save();
+
+    const emitMessage = {
+      ...newMessage.toObject(),
+      senderUsername: sender.username,
+      senderName: sender.name,
+    };
+
+    // Emit to everyone in the group room
+    io.to(`group_${group.id}`).emit("newGroupMessage", emitMessage);
+
+    return res.status(201).json({ message: "Message sent to group successfully", data: emitMessage });
+  } catch (err) {
+    console.error("Error sending group message:", err);
+    return res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// Get group messages with replies
+app.get("/groupmessages/:groupid", async (req, res) => {
+  try {
+    const { groupid } = req.params;
+    const { limit = 50, from, to } = req.query;
+
+    const query = { groupId: groupid, replyTo: null };
+    if (from || to) query.timestamp = {};
+    if (from) query.timestamp.$gte = new Date(from);
+    if (to) query.timestamp.$lte = new Date(to);
+
+    const messages = await GroupMessage.find(query)
+      .sort({ timestamp: -1 })
+      .limit(Number(limit));
+
+    const messageIds = messages.map(msg => msg.id);
+    const replies = await GroupMessage.find({ replyTo: { $in: messageIds } }).sort({ timestamp: 1 });
+
+    const messagesWithReplies = await Promise.all(messages.map(async (msg) => {
+      const sender = await User.findOne({ id: msg.senderId });
+      const msgReplies = replies.filter(r => r.replyTo === msg.id).map(r => ({
+        id: r.id,
+        senderId: r.senderId,
+        senderUsername: sender?.username || null,
+        senderName: sender?.name || null,
+        text: r.text,
+        fileUrl: r.fileUrl,
+        fileType: r.fileType,
+        timestamp: r.timestamp,
+        replyTo: r.replyTo
+      }));
+
+      return {
+        id: msg.id,
+        senderId: msg.senderId,
+        senderUsername: sender?.username || null,
+        senderName: sender?.name || null,
+        text: msg.text,
+        fileUrl: msg.fileUrl,
+        fileType: msg.fileType,
+        timestamp: msg.timestamp,
+        replyTo: msg.replyTo,
+        replies: msgReplies
+      };
+    }));
+
+    return res.status(200).json(messagesWithReplies);
+  } catch (err) {
+    console.error("Error fetching group messages:", err);
     return res.status(500).json({ error: "Internal server error" });
   }
 });
