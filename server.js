@@ -31,10 +31,20 @@ const DEFAULT_BANNER_IMG = "https://example.com/default-banner.png";
 function generateUserId() {
   return Math.floor(100000000 + Math.random() * 900000000); // 9-digit number
 }
+
 function generateMessageId() {
   const timestamp = Date.now();
   const random = Math.floor(100000000 + Math.random() * 900000000);
   return `${timestamp}${random}`;
+}
+
+function generateGroupId(length = 22) {
+  const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+  let id = "";
+  for (let i = 0; i < length; i++) {
+    id += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return id;
 }
 
 function generateAuthToken(length = 197) {
@@ -84,6 +94,27 @@ messageSchema.index({ receiverId: 1 });
 messageSchema.index({ replyTo: 1 });
 
 const Message = mongoose.model("Message", messageSchema);
+const groupSchema = new mongoose.Schema({
+  id: { type: String, unique: true }, // 19+ digit alphanumeric
+  ownerId: { type: Number, required: true },
+  name: { type: String, required: true }, // optional group name
+  pass: { type: String, required: true },
+  creationDate: { type: Date, default: Date.now },
+  members: [{ userId: Number }], // includes owner
+  admins: [{ userId: Number }], // start empty
+  gcpfp: { type: String, default: null } // group profile picture URL
+});
+
+const Group = mongoose.model("Group", groupSchema);
+
+const groupRequestSchema = new mongoose.Schema({
+  groupId: { type: String, required: true },
+  userId: { type: Number, required: true },
+  requestedAt: { type: Date, default: Date.now }
+});
+
+const GroupRequest = mongoose.model("GroupRequest", groupRequestSchema);
+
 // Register route
 app.post("/register", async (req, res) => {
   try {
@@ -459,6 +490,145 @@ app.get("/messages", async (req, res) => {
     return res.status(200).json(messagesWithReplies);
   } catch (err) {
     console.error("Error fetching messages:", err);
+    return res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+app.post("/create", async (req, res) => {
+  try {
+    const { authToken, name, pass, gcpfpBase64, gcpfpType } = req.body;
+    if (!authToken || !pass) return res.status(400).json({ error: "authToken and pass are required" });
+
+    const owner = await User.findOne({ authToken });
+    if (!owner) return res.status(401).json({ error: "Invalid authToken" });
+
+    let gcpfpUrl = null;
+    if (gcpfpBase64 && gcpfpType) {
+      const buffer = Buffer.from(gcpfpBase64, "base64");
+      const ext = gcpfpType.split("/")[1] || "png";
+      const fileName = `gcpfp_${Date.now()}.${ext}`;
+      const form = new FormData();
+      form.append("fileToUpload", buffer, fileName);
+
+      const catboxResponse = await axios.post("https://catbox.moe/user/api.php", form, {
+        headers: form.getHeaders(),
+        params: { reqtype: "fileupload", userhash: "" }
+      });
+
+      gcpfpUrl = catboxResponse.data;
+    }
+
+    let groupId;
+    do {
+      groupId = generateGroupId();
+    } while (await Group.findOne({ id: groupId }));
+
+    const newGroup = new Group({
+      id: groupId,
+      ownerId: owner.id,
+      name: name || `Group_${groupId}`,
+      pass,
+      members: [{ userId: owner.id }],
+      admins: [],
+      gcpfp: gcpfpUrl
+    });
+
+    await newGroup.save();
+
+    return res.status(201).json({ message: "Group created", groupId });
+  } catch (err) {
+    console.error("Error creating group:", err);
+    return res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+app.post("/addgc/:userid", async (req, res) => {
+  try {
+    const { authToken, groupId } = req.body;
+    const { userid } = req.params;
+
+    if (!authToken || !groupId) return res.status(400).json({ error: "authToken and groupId are required" });
+
+    const owner = await User.findOne({ authToken });
+    if (!owner) return res.status(401).json({ error: "Invalid authToken" });
+
+    const group = await Group.findOne({ id: groupId });
+    if (!group) return res.status(404).json({ error: "Group not found" });
+    if (group.ownerId !== owner.id) return res.status(403).json({ error: "Only owner can invite" });
+
+    const userToInvite = await User.findOne({ id: Number(userid) });
+    if (!userToInvite) return res.status(404).json({ error: "User not found" });
+
+    const alreadyRequested = await GroupRequest.findOne({ groupId, userId: userToInvite.id });
+    if (alreadyRequested) return res.status(400).json({ error: "User already invited" });
+
+    const newRequest = new GroupRequest({ groupId, userId: userToInvite.id });
+    await newRequest.save();
+
+    return res.status(200).json({ message: `Invite sent to ${userToInvite.username}` });
+  } catch (err) {
+    console.error("Error inviting user:", err);
+    return res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+app.get("/requests", async (req, res) => {
+  try {
+    const { authToken } = req.query;
+    if (!authToken) return res.status(400).json({ error: "authToken is required" });
+
+    const user = await User.findOne({ authToken });
+    if (!user) return res.status(401).json({ error: "Invalid authToken" });
+
+    const requests = await GroupRequest.find({ userId: user.id });
+    const detailed = await Promise.all(requests.map(async (r) => {
+      const group = await Group.findOne({ id: r.groupId });
+      return {
+        groupId: group.id,
+        groupName: group.name,
+        ownerId: group.ownerId,
+        requestedAt: r.requestedAt
+      };
+    }));
+
+    return res.status(200).json(detailed);
+  } catch (err) {
+    console.error("Error fetching requests:", err);
+    return res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+app.post("/join/:groupid", async (req, res) => {
+  try {
+    const { authToken } = req.body;
+    const { groupid } = req.params;
+
+    if (!authToken) 
+      return res.status(400).json({ error: "authToken is required" });
+
+    const user = await User.findOne({ authToken });
+    if (!user) 
+      return res.status(401).json({ error: "Invalid authToken" });
+
+    const group = await Group.findOne({ id: groupid });
+    if (!group) 
+      return res.status(404).json({ error: "Group not found" });
+
+    // Check if user is already a member
+    const isMember = group.members.find(m => m.userId === user.id);
+    if (isMember) 
+      return res.status(400).json({ error: "Already a member of this group" });
+
+    // Add user to members
+    group.members.push({ userId: user.id });
+    await group.save();
+
+    // Remove any pending request (optional)
+    await GroupRequest.deleteOne({ groupId: groupid, userId: user.id });
+
+    return res.status(200).json({ message: `Joined group ${group.name}` });
+  } catch (err) {
+    console.error("Error joining group:", err);
     return res.status(500).json({ error: "Internal server error" });
   }
 });
