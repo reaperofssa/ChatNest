@@ -653,6 +653,7 @@ app.post("/join/:groupid", async (req, res) => {
     return res.status(500).json({ error: "Internal server error" });
   }
 });
+
 app.post("/groupmessage/:groupid", async (req, res) => {
   try {
     const { groupid } = req.params;
@@ -719,8 +720,7 @@ app.post("/groupmessage/:groupid", async (req, res) => {
   }
 });
 
-// Get group messages with replies
-app.get("/groupmessages/:groupid", async (req, res) => {
+// Get group messages with repliesapp.get("/groupmessages/:groupid", async (req, res) => {
   try {
     const { groupid } = req.params;
     const { limit = 50, from, to } = req.query;
@@ -739,17 +739,24 @@ app.get("/groupmessages/:groupid", async (req, res) => {
 
     const messagesWithReplies = await Promise.all(messages.map(async (msg) => {
       const sender = await User.findOne({ id: msg.senderId });
-      const msgReplies = replies.filter(r => r.replyTo === msg.id).map(r => ({
-        id: r.id,
-        senderId: r.senderId,
-        senderUsername: sender?.username || null,
-        senderName: sender?.name || null,
-        text: r.text,
-        fileUrl: r.fileUrl,
-        fileType: r.fileType,
-        timestamp: r.timestamp,
-        replyTo: r.replyTo
-      }));
+
+      // Fetch sender info for each reply individually
+      const msgReplies = await Promise.all(
+        replies.filter(r => r.replyTo === msg.id).map(async (r) => {
+          const replySender = await User.findOne({ id: r.senderId });
+          return {
+            id: r.id,
+            senderId: r.senderId,
+            senderUsername: replySender?.username || null,
+            senderName: replySender?.name || null,
+            text: r.text,
+            fileUrl: r.fileUrl,
+            fileType: r.fileType,
+            timestamp: r.timestamp,
+            replyTo: r.replyTo
+          };
+        })
+      );
 
       return {
         id: msg.id,
