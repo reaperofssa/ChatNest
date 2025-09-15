@@ -1,9 +1,15 @@
 const express = require("express");
 const bodyParser = require("body-parser");
 const mongoose = require("mongoose");
-const bcrypt = require("bcryptjs");
+const axios = require("axios");
+const bcrypt = require("bcrypt");
+const FormData = require("form-data");
+const http = require("http");
+const { Server } = require("socket.io");
 
 const app = express();
+const server = http.createServer(app);
+const io = new Server(server);
 const PORT = 3000;
 
 // Middleware
@@ -24,6 +30,11 @@ const DEFAULT_BANNER_IMG = "https://example.com/default-banner.png";
 // Helper functions
 function generateUserId() {
   return Math.floor(100000000 + Math.random() * 900000000); // 9-digit number
+}
+function generateMessageId() {
+  const timestamp = Date.now();
+  const random = Math.floor(100000000 + Math.random() * 900000000);
+  return `${timestamp}${random}`;
 }
 
 function generateAuthToken(length = 197) {
@@ -56,7 +67,23 @@ const userSchema = new mongoose.Schema({
 
 // User Model
 const User = mongoose.model("User", userSchema);
+const messageSchema = new mongoose.Schema({
+  id: { type: String, unique: true },
+  senderId: { type: Number, required: true },
+  receiverId: { type: Number, required: true },
+  text: { type: String, default: "" },
+  fileUrl: { type: String, default: null },
+  fileType: { type: String, default: null },
+  timestamp: { type: Date, default: Date.now },
+  replyTo: { type: String, default: null }
+});
 
+// Indexes for faster queries
+messageSchema.index({ senderId: 1 });
+messageSchema.index({ receiverId: 1 });
+messageSchema.index({ replyTo: 1 });
+
+const Message = mongoose.model("Message", messageSchema);
 // Register route
 app.post("/register", async (req, res) => {
   try {
@@ -279,6 +306,155 @@ app.get("/friends/:username", async (req, res) => {
     return res.status(500).json({ error: "Internal server error" });
   }
 });
+io.on("connection", (socket) => {
+  console.log("New client connected:", socket.id);
+
+  socket.on("joinRoom", (userId) => {
+    socket.join(`user_${userId}`);
+  });
+
+  socket.on("disconnect", () => {
+    console.log("Client disconnected:", socket.id);
+  });
+});
+
+// Send message route
+app.post("/message/:userid", async (req, res) => {
+  try {
+    const { userid } = req.params;
+    const { authToken, text, replyTo, fileBase64, fileType } = req.body;
+
+    if (!authToken) return res.status(400).json({ error: "authToken is required" });
+
+    const sender = await User.findOne({ authToken });
+    if (!sender) return res.status(401).json({ error: "Invalid authToken" });
+
+    const receiver = await User.findOne({ id: Number(userid) });
+    if (!receiver) return res.status(404).json({ error: "Receiver not found" });
+
+    if (replyTo) {
+      const originalMessage = await Message.findOne({ id: replyTo });
+      if (!originalMessage) return res.status(404).json({ error: "Original message to reply to not found" });
+    }
+
+    let messageId;
+    do {
+      messageId = generateMessageId();
+    } while (await Message.findOne({ id: messageId }));
+
+    let fileUrl = null;
+    if (fileBase64 && fileType) {
+      const buffer = Buffer.from(fileBase64, "base64");
+      if (buffer.length > 10 * 1024 * 1024)
+        return res.status(400).json({ error: "File size exceeds 10MB limit" });
+
+      let ext = "dat";
+      if (fileType.startsWith("image/")) ext = fileType.split("/")[1];
+      else if (fileType.startsWith("video/")) ext = fileType.split("/")[1];
+      else if (fileType.startsWith("audio/")) ext = fileType.split("/")[1];
+
+      const fileName = `${messageId}.${ext}`;
+      const form = new FormData();
+      form.append("fileToUpload", buffer, fileName);
+
+      const catboxResponse = await axios.post("https://catbox.moe/user/api.php", form, {
+        headers: form.getHeaders(),
+        params: { reqtype: "fileupload", userhash: "" }
+      });
+
+      if (!catboxResponse.data) return res.status(500).json({ error: "Failed to upload file to Catbox" });
+      fileUrl = catboxResponse.data;
+    }
+
+    const newMessage = new Message({
+      id: messageId,
+      senderId: sender.id,
+      receiverId: receiver.id,
+      text: text || "",
+      fileUrl,
+      fileType: fileType || null,
+      replyTo: replyTo || null
+    });
+
+    await newMessage.save();
+
+    // Include sender username in WebSocket emit
+    const emitMessage = {
+      ...newMessage.toObject(),
+      senderUsername: sender.username
+    };
+
+    io.to(`user_${sender.id}`).emit("newMessage", emitMessage);
+    io.to(`user_${receiver.id}`).emit("newMessage", emitMessage);
+
+    return res.status(201).json({ message: "Message sent successfully", data: emitMessage });
+  } catch (err) {
+    console.error("Error sending message:", err);
+    return res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// Get messages route with 1-level replies and sender usernames
+app.get("/messages", async (req, res) => {
+  try {
+    const { userid, limit = 50, from, to } = req.query;
+    if (!userid) return res.status(400).json({ error: "userid is required" });
+
+    const query = { $or: [{ senderId: Number(userid) }, { receiverId: Number(userid) }] };
+    if (from || to) query.timestamp = {};
+    if (from) query.timestamp.$gte = new Date(from);
+    if (to) query.timestamp.$lte = new Date(to);
+
+    // Fetch main messages (exclude replies)
+    const messages = await Message.find({ ...query, replyTo: null })
+      .sort({ timestamp: -1 })
+      .limit(Number(limit));
+
+    const messageIds = messages.map(msg => msg.id);
+    const replies = await Message.find({ replyTo: { $in: messageIds } }).sort({ timestamp: 1 });
+
+    // Attach replies + sender usernames
+    const messagesWithReplies = await Promise.all(messages.map(async (msg) => {
+      const sender = await User.findOne({ id: msg.senderId });
+      const msgReplies = await Promise.all(
+        replies
+          .filter(r => r.replyTo === msg.id)
+          .map(async (r) => {
+            const replySender = await User.findOne({ id: r.senderId });
+            return {
+              id: r.id,
+              senderId: r.senderId,
+              senderUsername: replySender ? replySender.username : null,
+              receiverId: r.receiverId,
+              text: r.text,
+              fileUrl: r.fileUrl,
+              fileType: r.fileType,
+              timestamp: r.timestamp,
+              replyTo: r.replyTo
+            };
+          })
+      );
+      return {
+        id: msg.id,
+        senderId: msg.senderId,
+        senderUsername: sender ? sender.username : null,
+        receiverId: msg.receiverId,
+        text: msg.text,
+        fileUrl: msg.fileUrl,
+        fileType: msg.fileType,
+        timestamp: msg.timestamp,
+        replyTo: msg.replyTo,
+        replies: msgReplies
+      };
+    }));
+
+    return res.status(200).json(messagesWithReplies);
+  } catch (err) {
+    console.error("Error fetching messages:", err);
+    return res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 // Start server
 app.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);
