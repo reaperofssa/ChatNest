@@ -320,6 +320,7 @@ io.on("connection", (socket) => {
 });
 
 // Send message route
+// Send message route
 app.post("/message/:userid", async (req, res) => {
   try {
     const { userid } = req.params;
@@ -349,11 +350,7 @@ app.post("/message/:userid", async (req, res) => {
       if (buffer.length > 10 * 1024 * 1024)
         return res.status(400).json({ error: "File size exceeds 10MB limit" });
 
-      let ext = "dat";
-      if (fileType.startsWith("image/")) ext = fileType.split("/")[1];
-      else if (fileType.startsWith("video/")) ext = fileType.split("/")[1];
-      else if (fileType.startsWith("audio/")) ext = fileType.split("/")[1];
-
+      let ext = fileType.split("/")[1] || "dat";
       const fileName = `${messageId}.${ext}`;
       const form = new FormData();
       form.append("fileToUpload", buffer, fileName);
@@ -379,7 +376,6 @@ app.post("/message/:userid", async (req, res) => {
 
     await newMessage.save();
 
-    // Include both sender and receiver username + name
     const emitMessage = {
       ...newMessage.toObject(),
       senderUsername: sender.username,
@@ -398,7 +394,7 @@ app.post("/message/:userid", async (req, res) => {
   }
 });
 
-// Get messages route with 1-level replies and both usernames + names
+// Get messages route with replies
 app.get("/messages", async (req, res) => {
   try {
     const { userid, limit = 50, from, to } = req.query;
@@ -409,7 +405,6 @@ app.get("/messages", async (req, res) => {
     if (from) query.timestamp.$gte = new Date(from);
     if (to) query.timestamp.$lte = new Date(to);
 
-    // Fetch main messages (exclude replies)
     const messages = await Message.find({ ...query, replyTo: null })
       .sort({ timestamp: -1 })
       .limit(Number(limit));
@@ -417,7 +412,6 @@ app.get("/messages", async (req, res) => {
     const messageIds = messages.map(msg => msg.id);
     const replies = await Message.find({ replyTo: { $in: messageIds } }).sort({ timestamp: 1 });
 
-    // Attach replies + sender & receiver info
     const messagesWithReplies = await Promise.all(messages.map(async (msg) => {
       const sender = await User.findOne({ id: msg.senderId });
       const receiver = await User.findOne({ id: msg.receiverId });
@@ -431,11 +425,11 @@ app.get("/messages", async (req, res) => {
             return {
               id: r.id,
               senderId: r.senderId,
-              senderUsername: replySender ? replySender.username : null,
-              senderName: replySender ? replySender.name : null,
+              senderUsername: replySender?.username || null,
+              senderName: replySender?.name || null,
               receiverId: r.receiverId,
-              receiverUsername: replyReceiver ? replyReceiver.username : null,
-              receiverName: replyReceiver ? replyReceiver.name : null,
+              receiverUsername: replyReceiver?.username || null,
+              receiverName: replyReceiver?.name || null,
               text: r.text,
               fileUrl: r.fileUrl,
               fileType: r.fileType,
@@ -448,11 +442,11 @@ app.get("/messages", async (req, res) => {
       return {
         id: msg.id,
         senderId: msg.senderId,
-        senderUsername: sender ? sender.username : null,
-        senderName: sender ? sender.name : null,
+        senderUsername: sender?.username || null,
+        senderName: sender?.name || null,
         receiverId: msg.receiverId,
-        receiverUsername: receiver ? receiver.username : null,
-        receiverName: receiver ? receiver.name : null,
+        receiverUsername: receiver?.username || null,
+        receiverName: receiver?.name || null,
         text: msg.text,
         fileUrl: msg.fileUrl,
         fileType: msg.fileType,
@@ -468,7 +462,6 @@ app.get("/messages", async (req, res) => {
     return res.status(500).json({ error: "Internal server error" });
   }
 });
-
 // Start server
 server.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);
