@@ -85,7 +85,8 @@ const messageSchema = new mongoose.Schema({
   fileUrl: { type: String, default: null },
   fileType: { type: String, default: null },
   timestamp: { type: Date, default: Date.now },
-  replyTo: { type: String, default: null }
+  replyTo: { type: String, default: null },
+  issticker: { type: Boolean, default: false }   // <-- add this
 });
 
 // Indexes for faster queries
