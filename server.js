@@ -17,7 +17,7 @@ const PORT = 3000;
 app.use(bodyParser.json());
 
 // MongoDB connection
-mongoose.connect("mongodb://127.0.0.1:27017/usersdb", {
+mongoose.connect("mongodb+srv://painyt636:paijyf@cluster0.wtrtlek.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0", {
   useNewUrlParser: true,
   useUnifiedTopology: true,
 })
