@@ -1,586 +1,220 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Private Chat</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.2/socket.io.js"></script>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            margin: 0;
-            padding: 0;
-            height: 100vh;
-            display: flex;
-            flex-direction: column;
-        }
-        
-        .header {
-            background: #333;
-            color: white;
-            padding: 15px;
-            display: flex;
-            align-items: center;
-            gap: 15px;
-        }
-        
-        .back-btn {
-            background: #555;
-            border: none;
-            color: white;
-            padding: 8px 12px;
-            cursor: pointer;
-            border-radius: 4px;
-        }
-        
-        .recipient-name {
-            font-weight: bold;
-            font-size: 18px;
-        }
-        
-        .messages-container {
-            flex: 1;
-            overflow-y: auto;
-            padding: 20px;
-            background: #f5f5f5;
-        }
-        
-        .message {
-            margin-bottom: 15px;
-            padding: 10px;
-            border-radius: 8px;
-            max-width: 70%;
-            word-wrap: break-word;
-        }
-        
-        .message.sent {
-            background: #007bff;
-            color: white;
-            margin-left: auto;
-            text-align: right;
-        }
-        
-        .message.received {
-            background: white;
-            color: black;
-            margin-right: auto;
-        }
-        
-        .message-content img {
-            max-width: 100%;
-            border-radius: 8px;
-            margin-top: 8px;
-        }
-        
-        .message-content .sticker {
-            max-width: 150px;
-            max-height: 150px;
-        }
-        
-        .message-time {
-            font-size: 12px;
-            opacity: 0.7;
-            margin-top: 5px;
-        }
-        
-        .typing-indicator {
-            padding: 10px 20px;
-            font-style: italic;
-            color: #666;
-            min-height: 20px;
-        }
-        
-        .input-container {
-            background: white;
-            padding: 15px;
-            border-top: 1px solid #ddd;
-            display: flex;
-            gap: 10px;
-            align-items: flex-end;
-        }
-        
-        .message-input {
-            flex: 1;
-            border: 1px solid #ddd;
-            border-radius: 20px;
-            padding: 10px 15px;
-            outline: none;
-            resize: none;
-            min-height: 20px;
-            max-height: 100px;
-            overflow-y: auto;
-        }
-        
-        .file-input {
-            display: none;
-        }
-        
-        .file-btn, .send-btn {
-            background: #007bff;
-            color: white;
-            border: none;
-            border-radius: 50%;
-            width: 40px;
-            height: 40px;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-        
-        .file-btn:hover, .send-btn:hover {
-            background: #0056b3;
-        }
-        
-        .image-preview {
-            position: relative;
-            margin-bottom: 10px;
-        }
-        
-        .image-preview img {
-            max-width: 200px;
-            max-height: 200px;
-            border-radius: 8px;
-        }
-        
-        .preview-remove {
-            position: absolute;
-            top: 5px;
-            right: 5px;
-            background: red;
-            color: white;
-            border: none;
-            border-radius: 50%;
-            width: 25px;
-            height: 25px;
-            cursor: pointer;
-        }
-        
-        .sticker-toggle {
-            background: #28a745;
-            color: white;
-            border: none;
-            padding: 5px 10px;
-            border-radius: 4px;
-            cursor: pointer;
-            margin-top: 5px;
-        }
-        
-        .sticker-toggle.active {
-            background: #218838;
-        }
-        
-        .loading {
-            text-align: center;
-            padding: 20px;
-            color: #666;
-        }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Chat</title>
+<style>
+  body { margin:0; font-family:sans-serif; background:#f5f5f5; display:flex; flex-direction:column; height:100vh; }
+  #topBar { display:flex; align-items:center; padding:10px; background:#0084ff; color:white; }
+  #backBtn { margin-right:10px; cursor:pointer; font-weight:bold; }
+  #chatContainer { flex:1; overflow-y:auto; padding:10px; display:flex; flex-direction:column-reverse; }
+  .message { background:white; padding:8px 12px; border-radius:10px; margin:5px 0; max-width:70%; word-wrap:break-word; position:relative; }
+  .message.sent { align-self:flex-end; background:#dcf8c6; }
+  .message.received { align-self:flex-start; }
+  .message img { max-width:200px; border-radius:10px; margin-top:5px; display:block; }
+  .message .sticker { width:120px; height:120px; }
+  .message .reply { font-size:0.8em; color:#555; border-left:2px solid #ccc; padding-left:4px; margin-bottom:3px; cursor:pointer; }
+  #inputContainer { display:flex; padding:10px; background:white; align-items:center; flex-wrap:wrap; }
+  #messageInput { flex:1; padding:10px; border-radius:20px; border:1px solid #ccc; resize:none; overflow:hidden; }
+  #sendBtn, #fileBtn { margin-left:10px; padding:10px 15px; border:none; border-radius:20px; background:#0084ff; color:white; cursor:pointer; }
+  #typing { font-size:0.8em; color:#888; margin:5px 10px; }
+  #previewContainer { display:flex; margin:5px 10px; }
+  #previewContainer img { max-width:100px; max-height:100px; margin-right:5px; border-radius:10px; cursor:pointer; border:2px solid #0084ff; }
+</style>
 </head>
 <body>
-    <div class="header">
-        <button class="back-btn" onclick="goBack()">← Back</button>
-        <div class="recipient-name" id="recipientName">Loading...</div>
-    </div>
-    
-    <div class="messages-container" id="messagesContainer"></div>
-    
-    <div class="typing-indicator" id="typingIndicator"></div>
-    
-    <div class="input-container">
-        <input type="file" id="fileInput" class="file-input" accept="image/*">
-        <button class="file-btn" onclick="document.getElementById('fileInput').click()">📎</button>
-        
-        <div style="flex: 1;">
-            <div id="imagePreview" class="image-preview" style="display: none;">
-                <img id="previewImg" alt="Preview">
-                <button class="preview-remove" onclick="removeImagePreview()">×</button>
-                <div>
-                    <button class="sticker-toggle" id="stickerToggle" onclick="toggleSticker()">
-                        Send as Sticker
-                    </button>
-                </div>
-            </div>
-            <textarea 
-                id="messageInput" 
-                class="message-input" 
-                placeholder="Type a message..." 
-                rows="1"
-            ></textarea>
-        </div>
-        
-        <button class="send-btn" onclick="sendMessage()">➤</button>
-    </div>
 
-    <script>
-        // Global variables
-        let authToken = localStorage.getItem('authToken');
-        let userId = null;
-        let recipientId = null;
-        let recipientData = null;
-        let socket = null;
-        let currentUser = null;
-        let isLoadingMessages = false;
-        let allMessagesLoaded = false;
-        let lastMessageTimestamp = null;
-        let typingTimeout = null;
-        let isTyping = false;
-        let selectedFile = null;
-        let sendAsSticker = false;
+<div id="topBar">
+  <div id="backBtn">&larr; Back</div>
+  <div id="chatTitle">Chat</div>
+</div>
 
-        // Initialize page
-        async function init() {
-            if (!authToken) {
-                alert('Please login first');
-                window.location.href = '/login.html';
-                return;
-            }
+<div id="chatContainer"></div>
+<div id="typing"></div>
+<div id="previewContainer"></div>
 
-            // Extract recipient ID from URL
-            const path = window.location.pathname;
-            const match = path.match(/\/chat\/(\d+)/);
-            if (!match) {
-                alert('Invalid chat URL');
-                window.location.href = '/chats.html';
-                return;
-            }
-            recipientId = parseInt(match[1]);
+<div id="inputContainer">
+  <textarea id="messageInput" rows="1" placeholder="Type a message..."></textarea>
+  <input type="file" id="fileInput" style="display:none;">
+  <button id="fileBtn">📎</button>
+  <button id="sendBtn">Send</button>
+</div>
 
-            try {
-                // Get current user info
-                const response = await fetch('/me', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ authToken })
-                });
-                
-                if (response.ok) {
-                    currentUser = await response.json();
-                    userId = currentUser.id;
-                } else {
-                    throw new Error('Failed to get user info');
-                }
+<script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+<script>
+const socket = io();
+const chatContainer = document.getElementById('chatContainer');
+const messageInput = document.getElementById('messageInput');
+const sendBtn = document.getElementById('sendBtn');
+const fileBtn = document.getElementById('fileBtn');
+const fileInput = document.getElementById('fileInput');
+const typingIndicator = document.getElementById('typing');
+const backBtn = document.getElementById('backBtn');
+const previewContainer = document.getElementById('previewContainer');
 
-                // Get recipient info - we'll need to fetch this differently since the API expects username
-                // For now, we'll set a placeholder and update it when we get the first message
-                document.getElementById('recipientName').textContent = `User ${recipientId}`;
+backBtn.addEventListener('click', () => window.location.href = '/chats.html');
 
-                // Initialize socket connection
-                initSocket();
-                
-                // Load initial messages
-                loadMessages();
-                
-                // Setup scroll listener for loading more messages
-                setupScrollListener();
-                
-                // Setup input handlers
-                setupInputHandlers();
+const recipientId = window.location.pathname.split("/chat/")[1];
 
-            } catch (error) {
-                console.error('Initialization error:', error);
-                alert('Failed to initialize chat');
-            }
-        }
+let limit = 10, offset = 0, loading = false, allLoaded = false, replyToId = null;
+let selectedFile = null;
 
-        function initSocket() {
-            socket = io();
-            
-            socket.emit('joinUserRoom', authToken);
-            
-            // Listen for new messages
-            socket.on('newMessage', (message) => {
-                if ((message.senderId === userId && message.receiverId === recipientId) ||
-                    (message.senderId === recipientId && message.receiverId === userId)) {
-                    addMessageToChat(message);
-                    scrollToBottom();
-                }
-            });
-            
-            // Listen for typing indicators
-            socket.on('showTyping', (data) => {
-                updateTypingIndicator(data.users);
-            });
-        }
+// Auto resize textarea
+function resizeTextarea() {
+  messageInput.style.height = 'auto';
+  messageInput.style.height = messageInput.scrollHeight + 'px';
+}
+messageInput.addEventListener('input', resizeTextarea);
 
-        async function loadMessages(before = null) {
-            if (isLoadingMessages || allMessagesLoaded) return;
-            
-            isLoadingMessages = true;
-            showLoading();
-            
-            try {
-                let url = `/messages?userid=${recipientId}&limit=20`;
-                if (before) {
-                    url += `&to=${before}`;
-                }
-                
-                const response = await fetch(url);
-                if (response.ok) {
-                    const messages = await response.json();
-                    
-                    if (messages.length === 0) {
-                        allMessagesLoaded = true;
-                    } else {
-                        // Add messages to the top of the chat
-                        const container = document.getElementById('messagesContainer');
-                        const oldScrollHeight = container.scrollHeight;
-                        
-                        messages.reverse().forEach(message => {
-                            addMessageToChat(message, true);
-                        });
-                        
-                        // Maintain scroll position
-                        if (before) {
-                            container.scrollTop = container.scrollHeight - oldScrollHeight;
-                        } else {
-                            scrollToBottom();
-                        }
-                        
-                        // Update last message timestamp for pagination
-                        if (messages.length > 0) {
-                            lastMessageTimestamp = new Date(messages[0].timestamp).toISOString();
-                        }
-                    }
-                } else {
-                    console.error('Failed to load messages');
-                }
-            } catch (error) {
-                console.error('Error loading messages:', error);
-            } finally {
-                isLoadingMessages = false;
-                hideLoading();
-            }
-        }
+// Infinite scroll
+chatContainer.addEventListener('scroll', async () => {
+  if (chatContainer.scrollTop + chatContainer.clientHeight >= chatContainer.scrollHeight - 10) {
+    await loadMessages();
+  }
+});
 
-        function addMessageToChat(message, prepend = false) {
-            // Update recipient name if we don't have it yet
-            if (document.getElementById('recipientName').textContent.startsWith('User ')) {
-                if (message.senderId === recipientId) {
-                    document.getElementById('recipientName').textContent = message.senderName || `User ${recipientId}`;
-                } else if (message.receiverId === recipientId) {
-                    document.getElementById('recipientName').textContent = message.receiverName || `User ${recipientId}`;
-                }
-            }
+// Load messages
+async function loadMessages() {
+  if (loading || allLoaded) return;
+  loading = true;
+  try {
+    const res = await fetch(`/messages/${recipientId}?limit=${limit}&from=${offset}`);
+    const messages = await res.json();
+    if (messages.length < limit) allLoaded = true;
+    offset += messages.length;
+    messages.reverse().forEach(msg => chatContainer.appendChild(createMessageElement(msg)));
+  } catch(e) { console.error(e); }
+  loading = false;
+}
 
-            const container = document.getElementById('messagesContainer');
-            const messageDiv = document.createElement('div');
-            messageDiv.className = `message ${message.senderId === userId ? 'sent' : 'received'}`;
-            
-            let content = '';
-            
-            // Handle image/file content
-            if (message.fileUrl) {
-                if (message.fileType && message.fileType.startsWith('image/')) {
-                    const stickerClass = message.issticker ? 'sticker' : '';
-                    content += `<img src="${message.fileUrl}" alt="Image" class="${stickerClass}">`;
-                } else {
-                    content += `<a href="${message.fileUrl}" target="_blank">📎 File</a>`;
-                }
-            }
-            
-            // Handle text content
-            if (message.text && message.text.trim()) {
-                content += `<div>${message.text.replace(/\n/g, '<br>')}</div>`;
-            }
-            
-            // Handle replies (simplified for now)
-            if (message.replies && message.replies.length > 0) {
-                message.replies.forEach(reply => {
-                    content += `<div style="margin-top: 10px; padding: 5px; border-left: 3px solid #ccc; margin-left: 10px;">
-                        <small><strong>${reply.senderName}:</strong></small><br>
-                        ${reply.text || ''}
-                        ${reply.fileUrl && reply.fileType?.startsWith('image/') ? 
-                            `<br><img src="${reply.fileUrl}" style="max-width: 150px;" class="${reply.issticker ? 'sticker' : ''}">` : ''}
-                    </div>`;
-                });
-            }
-            
-            const time = new Date(message.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
-            
-            messageDiv.innerHTML = `
-                <div class="message-content">${content}</div>
-                <div class="message-time">${time}</div>
-            `;
-            
-            if (prepend) {
-                container.prepend(messageDiv);
-            } else {
-                container.appendChild(messageDiv);
-            }
-        }
+// Create message element
+function createMessageElement(msg) {
+  const div = document.createElement('div');
+  div.classList.add('message', msg.senderId === Number(localStorage.userId) ? 'sent' : 'received');
+  div.dataset.id = msg.id;
 
-        function setupScrollListener() {
-            const container = document.getElementById('messagesContainer');
-            container.addEventListener('scroll', () => {
-                if (container.scrollTop === 0 && !isLoadingMessages && !allMessagesLoaded) {
-                    loadMessages(lastMessageTimestamp);
-                }
-            });
-        }
+  if (msg.replyTo && msg.replyToText) {
+    const replyDiv = document.createElement('div');
+    replyDiv.classList.add('reply');
+    replyDiv.textContent = msg.replyToText.slice(0,50);
+    replyDiv.onclick = () => { replyToId = msg.replyTo; messageInput.focus(); }
+    div.appendChild(replyDiv);
+  }
 
-        function setupInputHandlers() {
-            const messageInput = document.getElementById('messageInput');
-            const fileInput = document.getElementById('fileInput');
-            
-            // Handle Enter key (Shift+Enter for line break)
-            messageInput.addEventListener('keydown', (e) => {
-                if (e.key === 'Enter' && !e.shiftKey) {
-                    e.preventDefault();
-                    sendMessage();
-                }
-            });
-            
-            // Handle typing indicator
-            messageInput.addEventListener('input', () => {
-                if (!isTyping) {
-                    isTyping = true;
-                    socket.emit('typing', { room: `user_${userId}`, authToken });
-                }
-                
-                clearTimeout(typingTimeout);
-                typingTimeout = setTimeout(() => {
-                    isTyping = false;
-                    socket.emit('stopTyping', { room: `user_${userId}`, authToken });
-                }, 2000);
-            });
-            
-            // Handle file selection
-            fileInput.addEventListener('change', (e) => {
-                const file = e.target.files[0];
-                if (file) {
-                    if (file.size > 10 * 1024 * 1024) {
-                        alert('File size must be less than 10MB');
-                        return;
-                    }
-                    
-                    selectedFile = file;
-                    showImagePreview(file);
-                }
-            });
-        }
+  if (msg.text) {
+    const p = document.createElement('p');
+    p.innerHTML = msg.text.replace(/\n/g,'<br>');
+    div.appendChild(p);
+  }
 
-        function showImagePreview(file) {
-            const preview = document.getElementById('imagePreview');
-            const previewImg = document.getElementById('previewImg');
-            
-            const reader = new FileReader();
-            reader.onload = (e) => {
-                previewImg.src = e.target.result;
-                preview.style.display = 'block';
-            };
-            reader.readAsDataURL(file);
-        }
+  if (msg.fileType?.startsWith('image/') && !msg.issticker) {
+    const img = document.createElement('img');
+    img.src = msg.fileUrl;
+    div.appendChild(img);
+  }
 
-        function removeImagePreview() {
-            document.getElementById('imagePreview').style.display = 'none';
-            document.getElementById('fileInput').value = '';
-            selectedFile = null;
-            sendAsSticker = false;
-            updateStickerToggle();
-        }
+  if (msg.issticker) {
+    const sticker = document.createElement('img');
+    sticker.src = msg.fileUrl;
+    sticker.classList.add('sticker');
+    div.appendChild(sticker);
+  }
 
-        function toggleSticker() {
-            sendAsSticker = !sendAsSticker;
-            updateStickerToggle();
-        }
+  return div;
+}
 
-        function updateStickerToggle() {
-            const toggle = document.getElementById('stickerToggle');
-            toggle.textContent = sendAsSticker ? 'Send as Image' : 'Send as Sticker';
-            toggle.className = sendAsSticker ? 'sticker-toggle active' : 'sticker-toggle';
-        }
+// Typing
+messageInput.addEventListener('input', () => {
+  socket.emit('typing', { to: recipientId });
+});
 
-        async function sendMessage() {
-            const messageInput = document.getElementById('messageInput');
-            const text = messageInput.value.trim();
-            
-            if (!text && !selectedFile) return;
-            
-            try {
-                const payload = {
-                    authToken,
-                    text
-                };
-                
-                if (selectedFile) {
-                    const reader = new FileReader();
-                    reader.onload = async (e) => {
-                        const base64 = e.target.result.split(',')[1];
-                        payload.fileBase64 = base64;
-                        payload.fileType = selectedFile.type || 'image/jpeg';
-                        payload.issticker = sendAsSticker;
-                        
-                        await sendMessageToAPI(payload);
-                        messageInput.value = '';
-                        removeImagePreview();
-                    };
-                    reader.readAsDataURL(selectedFile);
-                } else {
-                    await sendMessageToAPI(payload);
-                    messageInput.value = '';
-                }
-                
-            } catch (error) {
-                console.error('Error sending message:', error);
-                alert('Failed to send message');
-            }
-        }
+// Send message
+sendBtn.addEventListener('click', sendMessage);
 
-        async function sendMessageToAPI(payload) {
-            const response = await fetch(`/message/${recipientId}`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
-            });
-            
-            if (!response.ok) {
-                throw new Error('Failed to send message');
-            }
-        }
+// Enter adds line break
+messageInput.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    messageInput.value += '\n';
+    resizeTextarea();
+  }
+});
 
-        function updateTypingIndicator(users) {
-            const indicator = document.getElementById('typingIndicator');
-            const typingUsers = users.filter(user => user.id !== userId);
-            
-            if (typingUsers.length > 0) {
-                const names = typingUsers.map(user => user.name).join(', ');
-                indicator.textContent = `${names} ${typingUsers.length === 1 ? 'is' : 'are'} typing...`;
-            } else {
-                indicator.textContent = '';
-            }
-        }
+// File picker
+fileBtn.addEventListener('click', () => fileInput.click());
+fileInput.addEventListener('change', () => {
+  const file = fileInput.files[0];
+  if (!file) return;
+  selectedFile = file;
+  previewContainer.innerHTML = '';
+  const reader = new FileReader();
+  reader.onload = () => {
+    const img = document.createElement('img');
+    img.src = reader.result;
+    img.onclick = () => { previewContainer.innerHTML=''; selectedFile=null; }
+    previewContainer.appendChild(img);
+  };
+  reader.readAsDataURL(file);
+});
 
-        function scrollToBottom() {
-            const container = document.getElementById('messagesContainer');
-            container.scrollTop = container.scrollHeight;
-        }
+async function sendMessage() {
+  const text = messageInput.value.trim();
+  if (!text && !selectedFile && !replyToId) return;
 
-        function showLoading() {
-            const container = document.getElementById('messagesContainer');
-            let loader = document.getElementById('messageLoader');
-            if (!loader) {
-                loader = document.createElement('div');
-                loader.id = 'messageLoader';
-                loader.className = 'loading';
-                loader.textContent = 'Loading messages...';
-                container.prepend(loader);
-            }
-        }
+  let payload = { authToken: localStorage.authToken, text, replyTo: replyToId };
 
-        function hideLoading() {
-            const loader = document.getElementById('messageLoader');
-            if (loader) {
-                loader.remove();
-            }
-        }
+  if (selectedFile) {
+    const reader = new FileReader();
+    reader.onload = async () => {
+      payload.fileBase64 = reader.result.split(',')[1];
+      payload.fileType = selectedFile.type;
+      payload.issticker = selectedFile.type.startsWith('image/');
+      try {
+        const res = await fetch(`/message/${recipientId}`, {
+          method:'POST',
+          headers:{'Content-Type':'application/json'},
+          body:JSON.stringify(payload)
+        });
+        const data = await res.json();
+        chatContainer.prepend(createMessageElement(data.data));
+        messageInput.value=''; selectedFile=null; replyToId=null; previewContainer.innerHTML='';
+        resizeTextarea();
+      } catch(e){ console.error(e); }
+    };
+    reader.readAsDataURL(selectedFile);
+  } else {
+    try {
+      const res = await fetch(`/message/${recipientId}`, {
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify(payload)
+      });
+      const data = await res.json();
+      chatContainer.prepend(createMessageElement(data.data));
+      messageInput.value=''; replyToId=null; resizeTextarea();
+    } catch(e){ console.error(e); }
+  }
+}
 
-        function goBack() {
-            window.location.href = '/chats.html';
-        }
+// Socket listeners
+socket.on('newMessage', (msg) => {
+  if (Number(msg.senderId)===Number(recipientId) || Number(msg.receiverId)===Number(recipientId)) {
+    chatContainer.prepend(createMessageElement(msg));
+  }
+});
 
-        // Initialize when page loads
-        window.addEventListener('load', init);
-    </script>
+socket.on('typing', (data) => {
+  if (Number(data.from)===Number(recipientId)) {
+    typingIndicator.textContent = 'Typing...';
+    clearTimeout(typingIndicator.timeout);
+    typingIndicator.timeout = setTimeout(()=>typingIndicator.textContent='',1000);
+  }
+});
+
+// Initial load
+loadMessages();
+resizeTextarea();
+</script>
 </body>
 </html>
