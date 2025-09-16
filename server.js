@@ -123,7 +123,8 @@ const groupMessageSchema = new mongoose.Schema({
   fileUrl: { type: String, default: null },
   fileType: { type: String, default: null },
   timestamp: { type: Date, default: Date.now },
-  replyTo: { type: String, default: null }
+  replyTo: { type: String, default: null },
+  issticker: { type: Boolean, default: false }
 });
 
 groupMessageSchema.index({ groupId: 1 });
@@ -133,10 +134,10 @@ groupMessageSchema.index({ replyTo: 1 });
 const GroupMessage = mongoose.model("GroupMessage", groupMessageSchema);
 const ChannelSchema = new mongoose.Schema({
   id: { type: String, unique: true },
-  ownerId: { type: String, required: true },
+  ownerId: { type: Number, required: true },
   name: { type: String, required: true },
-  admins: [{ userId: String }],
-  subscribers: [{ userId: String }],
+  admins: [{ userId: Number }],
+  subscribers: [{ userId: Number }],
   createdAt: { type: Date, default: Date.now }
 });
 const Channel = mongoose.model("Channel", ChannelSchema);
@@ -204,15 +205,23 @@ app.post("/register", async (req, res) => {
 });
 
 // Login route
+
 app.post("/login", async (req, res) => {
   try {
     const { username, mail, password } = req.body;
 
-    if (!username || !mail || !password) {
-      return res.status(400).json({ error: "username, mail and password are required" });
+    if ((!username && !mail) || !password) {
+      return res.status(400).json({ error: "username or mail and password are required" });
     }
 
-    const user = await User.findOne({ username, mail });
+    // Find by username OR mail
+    const user = await User.findOne({
+      $or: [
+        username ? { username } : null,
+        mail ? { mail } : null
+      ].filter(Boolean) // remove nulls
+    });
+
     if (!user) {
       return res.status(401).json({ error: "Invalid username or mail" });
     }
@@ -225,7 +234,10 @@ app.post("/login", async (req, res) => {
     user.logdate = new Date();
     await user.save();
 
-    return res.status(200).json({ message: "Login successful", authToken: user.authToken });
+    return res.status(200).json({
+      message: "Login successful",
+      authToken: user.authToken
+    });
   } catch (err) {
     console.error("Error logging in:", err);
     return res.status(500).json({ error: "Internal server error" });
@@ -489,31 +501,34 @@ app.post("/message/:userid", async (req, res) => {
 
     // Handle file upload
     let fileUrl = null;
-    let finalIsSticker = false;
-    if (fileBase64 && fileType) {
-      const buffer = Buffer.from(fileBase64, "base64");
-      if (buffer.length > 10 * 1024 * 1024)
-        return res.status(400).json({ error: "File size exceeds 10MB limit" });
+let finalIsSticker = false;
 
-      const [typeMain, typeSub] = fileType.split("/");
-      const ext = typeSub || "dat";
-      const fileName = `${messageId}.${ext}`;
-      const form = new FormData();
-      form.append("fileToUpload", buffer, fileName);
+if (fileBase64 && fileType) {
+  const buffer = Buffer.from(fileBase64, "base64");
+  if (buffer.length > 10 * 1024 * 1024)
+    return res.status(400).json({ error: "File size exceeds 10MB limit" });
 
-      const catboxResponse = await axios.post("https://catbox.moe/user/api.php", form, {
-        headers: form.getHeaders(),
-        params: { reqtype: "fileupload", userhash: "" }
-      });
+  const [typeMain, typeSub] = fileType.split("/");
+  const ext = typeSub || "dat";
+  const fileName = `${messageId}.${ext}`;
+  
+  const form = new FormData();
+  form.append("reqtype", "fileupload");   // ✅ must be in form
+  form.append("userhash", "");            // optional, can stay empty
+  form.append("fileToUpload", buffer, fileName);
 
-      if (!catboxResponse.data)
-        return res.status(500).json({ error: "Failed to upload file to Catbox" });
+  const catboxResponse = await axios.post("https://catbox.moe/user/api.php", form, {
+    headers: form.getHeaders(),
+  });
 
-      fileUrl = catboxResponse.data;
+  if (!catboxResponse.data || catboxResponse.data.startsWith("ERROR"))
+    return res.status(500).json({ error: "Failed to upload file to Catbox" });
 
-      // Determine issticker: only true if frontend set it and file is an image
-      finalIsSticker = (typeMain === "image") && Boolean(issticker);
-    }
+  fileUrl = catboxResponse.data;
+
+  // Only mark as sticker if frontend flagged it AND it's an image
+  finalIsSticker = (typeMain === "image") && Boolean(issticker);
+}
 
     // Save message
     const newMessage = new Message({
@@ -541,17 +556,19 @@ app.post("/message/:userid", async (req, res) => {
     const senderRoom = `user_${sender.id}`;
     const receiverRoom = `user_${receiver.id}`;
 
-    if (io.sockets.adapter.rooms.has(senderRoom)) {
-      io.to(senderRoom).emit("newMessage", emitMessage);
-      io.to(senderRoom).emit("updateMyChats", {
-        type: "private",
-        id: receiver.id,
-        name: receiver.name,
-        username: receiver.username,
-        latestMessage: `${sender.name}: ${emitMessage.text?.slice(0, 50) || ""}`,
-        timestamp: emitMessage.timestamp
-      });
-    }
+    const senderSockets = io.sockets.adapter.rooms.get(senderRoom);
+
+if (senderSockets && senderSockets.size > 0) {
+  io.to(senderRoom).emit("newMessage", emitMessage);
+  io.to(senderRoom).emit("updateMyChats", {
+    type: "private",
+    id: receiver.id,
+    name: receiver.name,
+    username: receiver.username,
+    latestMessage: `${sender.name}: ${emitMessage.text?.slice(0, 50) || ""}`,
+    timestamp: emitMessage.timestamp
+  });
+}
 
     if (io.sockets.adapter.rooms.has(receiverRoom)) {
       io.to(receiverRoom).emit("newMessage", emitMessage);
@@ -657,11 +674,12 @@ app.post("/create", async (req, res) => {
       const ext = gcpfpType.split("/")[1] || "png";
       const fileName = `gcpfp_${Date.now()}.${ext}`;
       const form = new FormData();
+      form.append("reqtype", "fileupload");   // ✅ must be in form
+      form.append("userhash", "");            // optional, can stay empty
       form.append("fileToUpload", buffer, fileName);
 
       const catboxResponse = await axios.post("https://catbox.moe/user/api.php", form, {
-        headers: form.getHeaders(),
-        params: { reqtype: "fileupload", userhash: "" }
+        headers: form.getHeaders()
       });
 
       gcpfpUrl = catboxResponse.data;
@@ -815,11 +833,12 @@ app.post("/groupmessage/:groupid", async (req, res) => {
       const ext = typeSub || "dat";
       const fileName = `${messageId}.${ext}`;
       const form = new FormData();
+      form.append("reqtype", "fileupload");   // ✅ must be in form
+      form.append("userhash", "");            // optional, can stay empty
       form.append("fileToUpload", buffer, fileName);
 
       const catboxResponse = await axios.post("https://catbox.moe/user/api.php", form, {
         headers: form.getHeaders(),
-        params: { reqtype: "fileupload", userhash: "" }
       });
 
       if (!catboxResponse.data)
@@ -1049,11 +1068,12 @@ app.post("/channelmessage/:channelId", async (req, res) => {
       const ext = typeSub || "dat";
       const fileName = `${generateMessageId()}.${ext}`;
       const form = new FormData();
+      form.append("reqtype", "fileupload");   // ✅ must be in form
+      form.append("userhash", "");            // optional, can stay empty
       form.append("fileToUpload", buffer, fileName);
 
       const catboxResponse = await axios.post("https://catbox.moe/user/api.php", form, {
         headers: form.getHeaders(),
-        params: { reqtype: "fileupload", userhash: "" }
       });
       fileUrl = catboxResponse.data;
       finalIsSticker = (typeMain === "image") && Boolean(issticker);
