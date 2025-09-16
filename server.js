@@ -282,7 +282,34 @@ app.get("/user/:username", async (req, res) => {
     return res.status(500).json({ error: "Internal server error" });
   }
 });
+// Add this route to your backend
+app.get("/user/id/:userid", async (req, res) => {
+  try {
+    const { userid } = req.params;
+    const user = await User.findOne({ id: Number(userid) });
 
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    return res.status(200).json({
+      id: user.id,
+      username: user.username,
+      name: user.name,
+      bio: user.bio,
+      verified: user.verified,
+      premium: user.premium,
+      pnk: user.pnk,
+      regdate: user.regdate,
+      logdate: user.logdate,
+      profileimg: user.profileimg,
+      bannerimg: user.bannerimg
+    });
+  } catch (err) {
+    console.error("Error fetching user:", err);
+    return res.status(500).json({ error: "Internal server error" });
+  }
+});
 // Me route
 app.post("/me", async (req, res) => {
   try {
