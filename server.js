@@ -130,6 +130,28 @@ groupMessageSchema.index({ senderId: 1 });
 groupMessageSchema.index({ replyTo: 1 });
 
 const GroupMessage = mongoose.model("GroupMessage", groupMessageSchema);
+const ChannelSchema = new mongoose.Schema({
+  id: { type: String, unique: true },
+  ownerId: { type: String, required: true },
+  name: { type: String, required: true },
+  admins: [{ userId: String }],
+  subscribers: [{ userId: String }],
+  createdAt: { type: Date, default: Date.now }
+});
+const Channel = mongoose.model("Channel", ChannelSchema);
+
+const ChannelMessageSchema = new mongoose.Schema({
+  id: { type: String, unique: true },
+  channelId: { type: String, required: true },
+  senderId: { type: String, required: true },
+  text: String,
+  fileUrl: String,
+  fileType: String,
+  issticker: { type: Boolean, default: false },
+  reactions: [{ userId: String, emoji: String }],
+  timestamp: { type: Date, default: Date.now }
+});
+const ChannelMessage = mongoose.model("ChannelMessage", ChannelMessageSchema);
 // Register route
 app.post("/register", async (req, res) => {
   try {
@@ -402,6 +424,30 @@ io.on("connection", (socket) => {
       console.log(`User ${user.username} joined group room: ${group.name}`);
     } catch (err) {
       console.error("Error joining group room:", err);
+    }
+  });
+
+  // 🔥 Join a channel room (anyone with valid authToken can join)
+  socket.on("joinChannelRoom", async ({ channelId, authToken }) => {
+    try {
+      if (!authToken || !channelId) return;
+
+      const user = await User.findOne({ authToken });
+      if (!user) {
+        console.log("Invalid authToken for channel join:", authToken);
+        return;
+      }
+
+      const channel = await Channel.findOne({ id: channelId });
+      if (!channel) {
+        console.log("Channel not found:", channelId);
+        return;
+      }
+
+      socket.join(`channel_${channel.id}`);
+      console.log(`User ${user.username} joined channel room: ${channel.name}`);
+    } catch (err) {
+      console.error("Error joining channel room:", err);
     }
   });
 
@@ -950,6 +996,146 @@ app.get("/mychats", async (req, res) => {
     console.error("Error fetching mychats:", err);
     return res.status(500).json({ error: "Internal server error" });
   }
+});
+app.post("/createchannel", async (req, res) => {
+  try {
+    const { authToken, name } = req.body;
+    if (!authToken || !name) return res.status(400).json({ error: "Missing fields" });
+
+    const user = await User.findOne({ authToken });
+    if (!user) return res.status(401).json({ error: "Invalid authToken" });
+
+    const existing = await Channel.find({ ownerId: user.id });
+    if (existing.length >= 2) return res.status(403).json({ error: "Max 2 channels per user" });
+
+    const channelId = generateMessageId();
+    const newChannel = new Channel({
+      id: channelId,
+      ownerId: user.id,
+      name,
+      admins: [{ userId: user.id }]
+    });
+    await newChannel.save();
+
+    return res.status(201).json({ message: "Channel created", channel: newChannel });
+  } catch (err) {
+    console.error("Error creating channel:", err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+app.post("/channelmessage/:channelId", async (req, res) => {
+  try {
+    const { channelId } = req.params;
+    const { authToken, text, fileBase64, fileType, issticker } = req.body;
+
+    const sender = await User.findOne({ authToken });
+    if (!sender) return res.status(401).json({ error: "Invalid authToken" });
+
+    const channel = await Channel.findOne({ id: channelId });
+    if (!channel) return res.status(404).json({ error: "Channel not found" });
+
+    const isAdmin = channel.admins.some(a => a.userId === sender.id);
+    if (!isAdmin) return res.status(403).json({ error: "Only admins/owner can send messages" });
+
+    let fileUrl = null;
+    let finalIsSticker = false;
+    if (fileBase64 && fileType) {
+      const buffer = Buffer.from(fileBase64, "base64");
+      if (buffer.length > 10 * 1024 * 1024) return res.status(400).json({ error: "File too large" });
+
+      const [typeMain, typeSub] = fileType.split("/");
+      const ext = typeSub || "dat";
+      const fileName = `${generateMessageId()}.${ext}`;
+      const form = new FormData();
+      form.append("fileToUpload", buffer, fileName);
+
+      const catboxResponse = await axios.post("https://catbox.moe/user/api.php", form, {
+        headers: form.getHeaders(),
+        params: { reqtype: "fileupload", userhash: "" }
+      });
+      fileUrl = catboxResponse.data;
+      finalIsSticker = (typeMain === "image") && Boolean(issticker);
+    }
+
+    const messageId = generateMessageId();
+    const newMsg = new ChannelMessage({
+      id: messageId,
+      channelId,
+      senderId: sender.id,
+      text: text || "",
+      fileUrl,
+      fileType,
+      issticker: finalIsSticker
+    });
+    await newMsg.save();
+
+    const emitMsg = { ...newMsg.toObject(), senderName: sender.name, senderUsername: sender.username };
+    io.to(`channel_${channel.id}`).emit("newChannelMessage", emitMsg);
+
+    return res.status(201).json({ message: "Message sent", data: emitMsg });
+  } catch (err) {
+    console.error("Error sending channel message:", err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+app.post("/promotechanneluser/:channelId", async (req, res) => {
+  const { channelId } = req.params;
+  const { authToken, userId } = req.body;
+
+  const requester = await User.findOne({ authToken });
+  if (!requester) return res.status(401).json({ error: "Invalid authToken" });
+
+  const channel = await Channel.findOne({ id: channelId });
+  if (!channel) return res.status(404).json({ error: "Channel not found" });
+
+  if (channel.ownerId !== requester.id) return res.status(403).json({ error: "Only owner can promote" });
+
+  if (!channel.admins.some(a => a.userId === userId)) {
+    channel.admins.push({ userId });
+    await channel.save();
+  }
+
+  return res.status(200).json({ message: "User promoted to admin" });
+});
+
+app.post("/subscribe/:channelId", async (req, res) => {
+  const { channelId } = req.params;
+  const { authToken } = req.body;
+
+  const user = await User.findOne({ authToken });
+  if (!user) return res.status(401).json({ error: "Invalid authToken" });
+
+  const channel = await Channel.findOne({ id: channelId });
+  if (!channel) return res.status(404).json({ error: "Channel not found" });
+
+  if (!channel.subscribers.some(s => s.userId === user.id)) {
+    channel.subscribers.push({ userId: user.id });
+    await channel.save();
+  }
+
+  return res.status(200).json({ message: "Subscribed successfully" });
+});
+app.post("/react/:messageId", async (req, res) => {
+  const { messageId } = req.params;
+  const { authToken, emoji } = req.body;
+
+  const user = await User.findOne({ authToken });
+  if (!user) return res.status(401).json({ error: "Invalid authToken" });
+
+  const message = await ChannelMessage.findOne({ id: messageId });
+  if (!message) return res.status(404).json({ error: "Message not found" });
+
+  message.reactions.push({ userId: user.id, emoji });
+  await message.save();
+
+  io.to(`channel_${message.channelId}`).emit("reactionAdded", {
+    messageId,
+    userId: user.id,
+    emoji
+  });
+
+  return res.status(200).json({ message: "Reaction added" });
 });
 // Start server
 server.listen(PORT, () => {
