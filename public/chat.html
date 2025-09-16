@@ -288,29 +288,14 @@
             
             socket.emit('joinUserRoom', authToken);
             
-        // Debug function to log message data
-        function debugMessage(message, source) {
-            console.log(`[${source}] Message data:`, {
-                id: message.id,
-                senderId: message.senderId,
-                receiverId: message.receiverId,
-                text: message.text,
-                fileUrl: message.fileUrl,
-                fileType: message.fileType,
-                issticker: message.issticker,
-                timestamp: message.timestamp
+            // Listen for new messages
+            socket.on('newMessage', (message) => {
+                if ((message.senderId === userId && message.receiverId === recipientId) ||
+                    (message.senderId === recipientId && message.receiverId === userId)) {
+                    addMessageToChat(message);
+                    scrollToBottom();
+                }
             });
-        }
-
-        // Listen for new messages
-        socket.on('newMessage', (message) => {
-            debugMessage(message, 'Socket');
-            if ((message.senderId === userId && message.receiverId === recipientId) ||
-                (message.senderId === recipientId && message.receiverId === userId)) {
-                addMessageToChat(message);
-                scrollToBottom();
-            }
-        });
             
             // Listen for typing indicators
             socket.on('showTyping', (data) => {
@@ -337,15 +322,11 @@
                     if (messages.length === 0) {
                         allMessagesLoaded = true;
                     } else {
-                        // Debug loaded messages
-                        console.log('Loaded messages:', messages);
-                        
                         // Add messages to the top of the chat
                         const container = document.getElementById('messagesContainer');
                         const oldScrollHeight = container.scrollHeight;
                         
                         messages.reverse().forEach(message => {
-                            debugMessage(message, 'API Load');
                             addMessageToChat(message, true);
                         });
                         
