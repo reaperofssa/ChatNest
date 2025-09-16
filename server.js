@@ -356,14 +356,53 @@ app.get("/friends/:username", async (req, res) => {
 io.on("connection", (socket) => {
   console.log("New client connected:", socket.id);
 
-  // Join a user-specific room
-  socket.on("joinUserRoom", (userId) => {
-    socket.join(`user_${userId}`);
+  // Join a user-specific room using authToken for security
+  socket.on("joinUserRoom", async (authToken) => {
+    try {
+      if (!authToken) return;
+
+      const user = await User.findOne({ authToken });
+      if (!user) {
+        console.log("Invalid authToken attempted:", authToken);
+        return;
+      }
+
+      socket.join(`user_${user.id}`);
+      console.log(`User ${user.username} joined their room`);
+    } catch (err) {
+      console.error("Error joining user room:", err);
+    }
   });
 
-  // Join a group room
-  socket.on("joinGroupRoom", (groupId) => {
-    socket.join(`group_${groupId}`);
+  // Join a group room using authToken verification
+  socket.on("joinGroupRoom", async ({ groupId, authToken }) => {
+    try {
+      if (!authToken || !groupId) return;
+
+      const user = await User.findOne({ authToken });
+      if (!user) {
+        console.log("Invalid authToken for group join:", authToken);
+        return;
+      }
+
+      const group = await Group.findOne({ id: groupId });
+      if (!group) {
+        console.log("Group not found:", groupId);
+        return;
+      }
+
+      // Only allow if user is a member of the group
+      const isMember = group.members.some(m => m.userId === user.id);
+      if (!isMember) {
+        console.log(`User ${user.username} tried to join group ${group.name} without being a member`);
+        return;
+      }
+
+      socket.join(`group_${group.id}`);
+      console.log(`User ${user.username} joined group room: ${group.name}`);
+    } catch (err) {
+      console.error("Error joining group room:", err);
+    }
   });
 
   socket.on("disconnect", () => {
@@ -376,33 +415,41 @@ io.on("connection", (socket) => {
 app.post("/message/:userid", async (req, res) => {
   try {
     const { userid } = req.params;
-    const { authToken, text, replyTo, fileBase64, fileType } = req.body;
+    const { authToken, text, replyTo, fileBase64, fileType, issticker } = req.body;
 
     if (!authToken) return res.status(400).json({ error: "authToken is required" });
 
+    // Verify sender
     const sender = await User.findOne({ authToken });
     if (!sender) return res.status(401).json({ error: "Invalid authToken" });
 
+    // Verify receiver
     const receiver = await User.findOne({ id: Number(userid) });
     if (!receiver) return res.status(404).json({ error: "Receiver not found" });
 
+    // Verify replyTo if provided
     if (replyTo) {
       const originalMessage = await Message.findOne({ id: replyTo });
-      if (!originalMessage) return res.status(404).json({ error: "Original message to reply to not found" });
+      if (!originalMessage)
+        return res.status(404).json({ error: "Original message to reply to not found" });
     }
 
+    // Generate unique message ID
     let messageId;
     do {
       messageId = generateMessageId();
     } while (await Message.findOne({ id: messageId }));
 
+    // Handle file upload
     let fileUrl = null;
+    let finalIsSticker = false;
     if (fileBase64 && fileType) {
       const buffer = Buffer.from(fileBase64, "base64");
       if (buffer.length > 10 * 1024 * 1024)
         return res.status(400).json({ error: "File size exceeds 10MB limit" });
 
-      let ext = fileType.split("/")[1] || "dat";
+      const [typeMain, typeSub] = fileType.split("/");
+      const ext = typeSub || "dat";
       const fileName = `${messageId}.${ext}`;
       const form = new FormData();
       form.append("fileToUpload", buffer, fileName);
@@ -412,10 +459,16 @@ app.post("/message/:userid", async (req, res) => {
         params: { reqtype: "fileupload", userhash: "" }
       });
 
-      if (!catboxResponse.data) return res.status(500).json({ error: "Failed to upload file to Catbox" });
+      if (!catboxResponse.data)
+        return res.status(500).json({ error: "Failed to upload file to Catbox" });
+
       fileUrl = catboxResponse.data;
+
+      // Determine issticker: only true if frontend set it and file is an image
+      finalIsSticker = (typeMain === "image") && Boolean(issticker);
     }
 
+    // Save message
     const newMessage = new Message({
       id: messageId,
       senderId: sender.id,
@@ -423,11 +476,12 @@ app.post("/message/:userid", async (req, res) => {
       text: text || "",
       fileUrl,
       fileType: fileType || null,
-      replyTo: replyTo || null
+      replyTo: replyTo || null,
+      issticker: finalIsSticker
     });
-
     await newMessage.save();
 
+    // Prepare emit data
     const emitMessage = {
       ...newMessage.toObject(),
       senderUsername: sender.username,
@@ -436,31 +490,34 @@ app.post("/message/:userid", async (req, res) => {
       receiverName: receiver.name
     };
 
-    // Emit to sender and receiver rooms
-io.to(`user_${sender.id}`).emit("newMessage", emitMessage);
-io.to(`user_${receiver.id}`).emit("newMessage", emitMessage);
+    // Only emit to verified rooms
+    const senderRoom = `user_${sender.id}`;
+    const receiverRoom = `user_${receiver.id}`;
 
-// Emit general /mychats update
-const chatUpdateSender = {
-  type: "private",
-  id: receiver.id,
-  name: receiver.name,
-  username: receiver.username,
-  latestMessage: `${sender.name}: ${emitMessage.text?.slice(0, 50) || ""}`,
-  timestamp: emitMessage.timestamp
-};
+    if (io.sockets.adapter.rooms.has(senderRoom)) {
+      io.to(senderRoom).emit("newMessage", emitMessage);
+      io.to(senderRoom).emit("updateMyChats", {
+        type: "private",
+        id: receiver.id,
+        name: receiver.name,
+        username: receiver.username,
+        latestMessage: `${sender.name}: ${emitMessage.text?.slice(0, 50) || ""}`,
+        timestamp: emitMessage.timestamp
+      });
+    }
 
-const chatUpdateReceiver = {
-  type: "private",
-  id: sender.id,
-  name: sender.name,
-  username: sender.username,
-  latestMessage: `${sender.name}: ${emitMessage.text?.slice(0, 50) || ""}`,
-  timestamp: emitMessage.timestamp
-};
+    if (io.sockets.adapter.rooms.has(receiverRoom)) {
+      io.to(receiverRoom).emit("newMessage", emitMessage);
+      io.to(receiverRoom).emit("updateMyChats", {
+        type: "private",
+        id: sender.id,
+        name: sender.name,
+        username: sender.username,
+        latestMessage: `${sender.name}: ${emitMessage.text?.slice(0, 50) || ""}`,
+        timestamp: emitMessage.timestamp
+      });
+    }
 
-io.to(`user_${sender.id}`).emit("updateMyChats", chatUpdateSender);
-io.to(`user_${receiver.id}`).emit("updateMyChats", chatUpdateReceiver);
     return res.status(201).json({ message: "Message sent successfully", data: emitMessage });
   } catch (err) {
     console.error("Error sending message:", err);
@@ -507,6 +564,7 @@ app.get("/messages", async (req, res) => {
               text: r.text,
               fileUrl: r.fileUrl,
               fileType: r.fileType,
+              issticker: r.issticker || false,
               timestamp: r.timestamp,
               replyTo: r.replyTo
             };
@@ -524,6 +582,7 @@ app.get("/messages", async (req, res) => {
         text: msg.text,
         fileUrl: msg.fileUrl,
         fileType: msg.fileType,
+        issticker: msg.issticker || false,
         timestamp: msg.timestamp,
         replyTo: msg.replyTo,
         replies: msgReplies
@@ -679,28 +738,34 @@ app.post("/join/:groupid", async (req, res) => {
 app.post("/groupmessage/:groupid", async (req, res) => {
   try {
     const { groupid } = req.params;
-    const { authToken, text, replyTo, fileBase64, fileType } = req.body;
+    const { authToken, text, replyTo, fileBase64, fileType, issticker } = req.body;
 
     if (!authToken) return res.status(400).json({ error: "authToken is required" });
 
+    // Verify sender
     const sender = await User.findOne({ authToken });
     if (!sender) return res.status(401).json({ error: "Invalid authToken" });
 
+    // Verify group
     const group = await Group.findOne({ id: groupid });
     if (!group) return res.status(404).json({ error: "Group not found" });
 
+    // Generate unique message ID
     let messageId;
     do {
       messageId = generateMessageId();
     } while (await GroupMessage.findOne({ id: messageId }));
 
+    // Handle file upload
     let fileUrl = null;
+    let finalIsSticker = false;
     if (fileBase64 && fileType) {
       const buffer = Buffer.from(fileBase64, "base64");
       if (buffer.length > 10 * 1024 * 1024)
         return res.status(400).json({ error: "File size exceeds 10MB limit" });
 
-      let ext = fileType.split("/")[1] || "dat";
+      const [typeMain, typeSub] = fileType.split("/");
+      const ext = typeSub || "dat";
       const fileName = `${messageId}.${ext}`;
       const form = new FormData();
       form.append("fileToUpload", buffer, fileName);
@@ -710,10 +775,16 @@ app.post("/groupmessage/:groupid", async (req, res) => {
         params: { reqtype: "fileupload", userhash: "" }
       });
 
-      if (!catboxResponse.data) return res.status(500).json({ error: "Failed to upload file to Catbox" });
+      if (!catboxResponse.data)
+        return res.status(500).json({ error: "Failed to upload file to Catbox" });
+
       fileUrl = catboxResponse.data;
+
+      // Only mark as sticker if frontend set it AND it's an image
+      finalIsSticker = (typeMain === "image") && Boolean(issticker);
     }
 
+    // Save group message
     const newMessage = new GroupMessage({
       id: messageId,
       groupId: group.id,
@@ -721,9 +792,9 @@ app.post("/groupmessage/:groupid", async (req, res) => {
       text: text || "",
       fileUrl,
       fileType: fileType || null,
-      replyTo: replyTo || null
+      replyTo: replyTo || null,
+      issticker: finalIsSticker
     });
-
     await newMessage.save();
 
     const emitMessage = {
@@ -732,20 +803,19 @@ app.post("/groupmessage/:groupid", async (req, res) => {
       senderName: sender.name,
     };
 
-   // Emit to everyone in the group room
-io.to(`group_${group.id}`).emit("newGroupMessage", emitMessage);
+    // Emit to everyone in the group room
+    io.to(`group_${group.id}`).emit("newGroupMessage", emitMessage);
 
-// Emit general /mychats update for group members (optimized)
-const chatUpdate = {
-  type: "group",
-  id: group.id,
-  name: group.name,
-  latestMessage: `${sender.name}: ${emitMessage.text?.slice(0, 50) || ""}`,
-  timestamp: emitMessage.timestamp
-};
+    // Emit general /mychats update for group members
+    const chatUpdate = {
+      type: "group",
+      id: group.id,
+      name: group.name,
+      latestMessage: `${sender.name}: ${emitMessage.text?.slice(0, 50) || ""}`,
+      timestamp: emitMessage.timestamp
+    };
+    io.to(`group_${group.id}`).emit("updateMyChats", chatUpdate);
 
-// Broadcast to all sockets in the group room
-io.to(`group_${group.id}`).emit("updateMyChats", chatUpdate);
     return res.status(201).json({ message: "Message sent to group successfully", data: emitMessage });
   } catch (err) {
     console.error("Error sending group message:", err);
@@ -774,7 +844,6 @@ app.get("/groupmessages/:groupid", async (req, res) => {
     const messagesWithReplies = await Promise.all(messages.map(async (msg) => {
       const sender = await User.findOne({ id: msg.senderId });
 
-      // Fetch sender info for each reply individually
       const msgReplies = await Promise.all(
         replies.filter(r => r.replyTo === msg.id).map(async (r) => {
           const replySender = await User.findOne({ id: r.senderId });
@@ -786,6 +855,7 @@ app.get("/groupmessages/:groupid", async (req, res) => {
             text: r.text,
             fileUrl: r.fileUrl,
             fileType: r.fileType,
+            issticker: r.issticker || false,  // <-- added sticker flag
             timestamp: r.timestamp,
             replyTo: r.replyTo
           };
@@ -800,6 +870,7 @@ app.get("/groupmessages/:groupid", async (req, res) => {
         text: msg.text,
         fileUrl: msg.fileUrl,
         fileType: msg.fileType,
+        issticker: msg.issticker || false,  // <-- added sticker flag
         timestamp: msg.timestamp,
         replyTo: msg.replyTo,
         replies: msgReplies
