@@ -830,6 +830,80 @@ app.post("/join/:groupid", async (req, res) => {
     return res.status(500).json({ error: "Internal server error" });
   }
 });
+app.post("/kick/:userid", async (req, res) => {
+  try {
+    const { authToken, groupId } = req.body;
+    const { userid } = req.params;
+
+    if (!authToken || !groupId) 
+      return res.status(400).json({ error: "authToken and groupId are required" });
+
+    const requester = await User.findOne({ authToken });
+    if (!requester) 
+      return res.status(401).json({ error: "Invalid authToken" });
+
+    const group = await Group.findOne({ id: groupId });
+    if (!group) 
+      return res.status(404).json({ error: "Group not found" });
+
+    // Only owner or admin can kick
+    const isOwner = group.ownerId === requester.id;
+    const isAdmin = group.admins.some(a => a.userId === requester.id);
+    if (!isOwner && !isAdmin) 
+      return res.status(403).json({ error: "Only owner or admins can kick members" });
+
+    // Check if target is member
+    const memberIndex = group.members.findIndex(m => m.userId === Number(userid));
+    if (memberIndex === -1) 
+      return res.status(404).json({ error: "User is not a member" });
+
+    // Prevent kicking the owner
+    if (Number(userid) === group.ownerId) 
+      return res.status(400).json({ error: "Owner cannot be kicked" });
+
+    group.members.splice(memberIndex, 1);
+    await group.save();
+
+    return res.status(200).json({ message: "User kicked from group" });
+  } catch (err) {
+    console.error("Error kicking user:", err);
+    return res.status(500).json({ error: "Internal server error" });
+  }
+});
+app.post("/leave/:groupid", async (req, res) => {
+  try {
+    const { authToken } = req.body;
+    const { groupid } = req.params;
+
+    if (!authToken) 
+      return res.status(400).json({ error: "authToken is required" });
+
+    const user = await User.findOne({ authToken });
+    if (!user) 
+      return res.status(401).json({ error: "Invalid authToken" });
+
+    const group = await Group.findOne({ id: groupid });
+    if (!group) 
+      return res.status(404).json({ error: "Group not found" });
+
+    // Owner cannot leave
+    if (group.ownerId === user.id) 
+      return res.status(400).json({ error: "Owner cannot leave the group. Transfer ownership or delete group." });
+
+    // Remove member
+    const memberIndex = group.members.findIndex(m => m.userId === user.id);
+    if (memberIndex === -1) 
+      return res.status(400).json({ error: "You are not a member of this group" });
+
+    group.members.splice(memberIndex, 1);
+    await group.save();
+
+    return res.status(200).json({ message: `Left group ${group.name}` });
+  } catch (err) {
+    console.error("Error leaving group:", err);
+    return res.status(500).json({ error: "Internal server error" });
+  }
+});
 
 app.post("/groupmessage/:groupid", async (req, res) => {
   try {
@@ -1187,13 +1261,21 @@ app.post("/channelmessage/:channelId", async (req, res) => {
 
     // Prepare emit object
     const emitMsg = {
-      ...newMsg.toObject(),
-      senderName: sender.name,
-      senderUsername: sender.username,
-    };
+  ...newMsg.toObject(),
+  senderName: sender.name,
+  senderUsername: sender.username
+};
 
     // Emit to all subscribers of the channel
-    io.to(`channel_${channel.id}`).emit("newChannelMessage", emitMsg);
+    io.to(`channel_${channelId}`).emit("newChannelMessage", emitMsg);
+
+io.to(`channel_${channelId}`).emit("updateMyChats", {
+  type: "channel",
+  id: channel.id,
+  name: channel.name,
+  latestMessage: `${sender.name}: ${emitMsg.text?.slice(0, 50) || ""}`,
+  timestamp: emitMsg.timestamp
+});
 
     return res.status(201).json({ message: "Message sent", data: emitMsg });
   } catch (err) {
