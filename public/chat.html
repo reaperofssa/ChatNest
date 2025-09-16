@@ -261,14 +261,9 @@
                     throw new Error('Failed to get user info');
                 }
 
-                // Get recipient info
-                const recipientResponse = await fetch(`/user/${recipientId}`);
-                if (recipientResponse.ok) {
-                    recipientData = await recipientResponse.json();
-                    document.getElementById('recipientName').textContent = recipientData.name;
-                } else {
-                    document.getElementById('recipientName').textContent = `User ${recipientId}`;
-                }
+                // Get recipient info - we'll need to fetch this differently since the API expects username
+                // For now, we'll set a placeholder and update it when we get the first message
+                document.getElementById('recipientName').textContent = `User ${recipientId}`;
 
                 // Initialize socket connection
                 initSocket();
@@ -293,14 +288,29 @@
             
             socket.emit('joinUserRoom', authToken);
             
-            // Listen for new messages
-            socket.on('newMessage', (message) => {
-                if ((message.senderId === userId && message.receiverId === recipientId) ||
-                    (message.senderId === recipientId && message.receiverId === userId)) {
-                    addMessageToChat(message);
-                    scrollToBottom();
-                }
+        // Debug function to log message data
+        function debugMessage(message, source) {
+            console.log(`[${source}] Message data:`, {
+                id: message.id,
+                senderId: message.senderId,
+                receiverId: message.receiverId,
+                text: message.text,
+                fileUrl: message.fileUrl,
+                fileType: message.fileType,
+                issticker: message.issticker,
+                timestamp: message.timestamp
             });
+        }
+
+        // Listen for new messages
+        socket.on('newMessage', (message) => {
+            debugMessage(message, 'Socket');
+            if ((message.senderId === userId && message.receiverId === recipientId) ||
+                (message.senderId === recipientId && message.receiverId === userId)) {
+                addMessageToChat(message);
+                scrollToBottom();
+            }
+        });
             
             // Listen for typing indicators
             socket.on('showTyping', (data) => {
@@ -327,11 +337,15 @@
                     if (messages.length === 0) {
                         allMessagesLoaded = true;
                     } else {
+                        // Debug loaded messages
+                        console.log('Loaded messages:', messages);
+                        
                         // Add messages to the top of the chat
                         const container = document.getElementById('messagesContainer');
                         const oldScrollHeight = container.scrollHeight;
                         
                         messages.reverse().forEach(message => {
+                            debugMessage(message, 'API Load');
                             addMessageToChat(message, true);
                         });
                         
@@ -359,6 +373,15 @@
         }
 
         function addMessageToChat(message, prepend = false) {
+            // Update recipient name if we don't have it yet
+            if (document.getElementById('recipientName').textContent.startsWith('User ')) {
+                if (message.senderId === recipientId) {
+                    document.getElementById('recipientName').textContent = message.senderName || `User ${recipientId}`;
+                } else if (message.receiverId === recipientId) {
+                    document.getElementById('recipientName').textContent = message.receiverName || `User ${recipientId}`;
+                }
+            }
+
             const container = document.getElementById('messagesContainer');
             const messageDiv = document.createElement('div');
             messageDiv.className = `message ${message.senderId === userId ? 'sent' : 'received'}`;
@@ -504,18 +527,18 @@
                     reader.onload = async (e) => {
                         const base64 = e.target.result.split(',')[1];
                         payload.fileBase64 = base64;
-                        payload.fileType = selectedFile.type;
+                        payload.fileType = selectedFile.type || 'image/jpeg';
                         payload.issticker = sendAsSticker;
                         
                         await sendMessageToAPI(payload);
+                        messageInput.value = '';
+                        removeImagePreview();
                     };
                     reader.readAsDataURL(selectedFile);
                 } else {
                     await sendMessageToAPI(payload);
+                    messageInput.value = '';
                 }
-                
-                messageInput.value = '';
-                removeImagePreview();
                 
             } catch (error) {
                 console.error('Error sending message:', error);
