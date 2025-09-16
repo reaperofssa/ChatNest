@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>CodeNest - Login</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #0d1117;
+      color: #c9d1d9;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+    }
+    .box {
+      background: #161b22;
+      padding: 2rem;
+      border-radius: 8px;
+      width: 320px;
+    }
+    h2 {
+      margin-bottom: 1rem;
+      text-align: center;
+    }
+    input, button {
+      width: 100%;
+      padding: 10px;
+      margin: 6px 0;
+      border-radius: 5px;
+      border: none;
+    }
+    input {
+      background: #0d1117;
+      color: #c9d1d9;
+      border: 1px solid #30363d;
+    }
+    button {
+      background: #238636;
+      color: white;
+      font-weight: bold;
+      cursor: pointer;
+    }
+    button:hover {
+      background: #2ea043;
+    }
+    .msg {
+      text-align: center;
+      margin-top: 10px;
+    }
+    a {
+      color: #58a6ff;
+      text-decoration: none;
+    }
+  </style>
+</head>
+<body>
+  <div class="box">
+    <h2>Login</h2>
+    <form id="loginForm">
+      <input type="text" placeholder="Username or Email" name="username" required>
+      <input type="password" placeholder="Password" name="password" required>
+      <button type="submit">Login</button>
+    </form>
+    <div class="msg" id="message"></div>
+    <p class="msg">Don’t have an account? <a href="register.html">Register</a></p>
+  </div>
+
+  <script>
+    document.getElementById("loginForm").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const formData = Object.fromEntries(new FormData(e.target).entries());
+
+      const res = await fetch("/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(formData)
+      });
+
+      const data = await res.json();
+      if (data.authToken) {
+        localStorage.setItem("authToken", data.authToken);
+        document.getElementById("message").innerText = "Login successful! Redirecting...";
+        setTimeout(() => window.location.href = "/dashboard.html", 1200);
+      } else {
+        document.getElementById("message").innerText = data.message || "Error";
+      }
+    });
+  </script>
+</body>
+</html>
