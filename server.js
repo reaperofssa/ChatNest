@@ -3,6 +3,7 @@ const bodyParser = require("body-parser");
 const mongoose = require("mongoose");
 const axios = require("axios");
 const bcrypt = require("bcrypt");
+const crypto = require("crypto");
 const FormData = require("form-data");
 const http = require("http");
 const { Server } = require("socket.io");
@@ -32,10 +33,14 @@ function generateUserId() {
   return Math.floor(100000000 + Math.random() * 900000000); // 9-digit number
 }
 
-function generateMessageId() {
-  const timestamp = Date.now();
-  const random = Math.floor(100000000 + Math.random() * 900000000);
-  return `${timestamp}${random}`;
+function generateMessageId(length = 20) {
+  const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+  const bytes = crypto.randomBytes(length);
+  let id = "";
+  for (let i = 0; i < length; i++) {
+    id += chars[bytes[i] % chars.length];
+  }
+  return id;
 }
 
 function generateGroupId(length = 22) {
