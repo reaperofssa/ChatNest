@@ -11,11 +11,11 @@ const { Server } = require("socket.io");
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server);
-const PORT = 3000;
+const PORT = 7860;
 
 // Middleware
 app.use(bodyParser.json());
-
+app.use(express.static("public"));
 // MongoDB connection
 mongoose.connect("mongodb+srv://painyt636:paijyf@cluster0.wtrtlek.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0", {
   useNewUrlParser: true,
