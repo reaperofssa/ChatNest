@@ -159,6 +159,9 @@ const ChannelMessageSchema = new mongoose.Schema({
   timestamp: { type: Date, default: Date.now }
 });
 const ChannelMessage = mongoose.model("ChannelMessage", ChannelMessageSchema);
+app.get("/chat/:id", (req, res) => {
+  res.sendFile(path.join(__dirname, "public/chat.html"));
+});
 // Register route
 app.post("/register", async (req, res) => {
   try {
