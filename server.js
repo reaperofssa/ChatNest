@@ -145,12 +145,12 @@ const Channel = mongoose.model("Channel", ChannelSchema);
 const ChannelMessageSchema = new mongoose.Schema({
   id: { type: String, unique: true },
   channelId: { type: String, required: true },
-  senderId: { type: String, required: true },
+  senderId: { type: Number, required: true },
   text: String,
   fileUrl: String,
   fileType: String,
   issticker: { type: Boolean, default: false },
-  reactions: [{ userId: String, emoji: String }],
+  reactions: [{ userId: Number, emoji: String }],
   timestamp: { type: Date, default: Date.now }
 });
 const ChannelMessage = mongoose.model("ChannelMessage", ChannelMessageSchema);
@@ -470,7 +470,6 @@ io.on("connection", (socket) => {
 });
 
 // Send message route
-// Send message route
 app.post("/message/:userid", async (req, res) => {
   try {
     const { userid } = req.params;
@@ -483,14 +482,16 @@ app.post("/message/:userid", async (req, res) => {
     if (!sender) return res.status(401).json({ error: "Invalid authToken" });
 
     // Verify receiver
+    if (!userid || isNaN(userid)) return res.status(400).json({ error: "Invalid receiver id" });
     const receiver = await User.findOne({ id: Number(userid) });
     if (!receiver) return res.status(404).json({ error: "Receiver not found" });
 
     // Verify replyTo if provided
     if (replyTo) {
       const originalMessage = await Message.findOne({ id: replyTo });
-      if (!originalMessage)
+      if (!originalMessage) {
         return res.status(404).json({ error: "Original message to reply to not found" });
+      }
     }
 
     // Generate unique message ID
@@ -501,34 +502,40 @@ app.post("/message/:userid", async (req, res) => {
 
     // Handle file upload
     let fileUrl = null;
-let finalIsSticker = false;
+    let finalIsSticker = false;
 
-if (fileBase64 && fileType) {
-  const buffer = Buffer.from(fileBase64, "base64");
-  if (buffer.length > 10 * 1024 * 1024)
-    return res.status(400).json({ error: "File size exceeds 10MB limit" });
+    if (fileBase64 && fileType) {
+      try {
+        const buffer = Buffer.from(fileBase64, "base64");
+        if (buffer.length > 10 * 1024 * 1024)
+          return res.status(400).json({ error: "File size exceeds 10MB limit" });
 
-  const [typeMain, typeSub] = fileType.split("/");
-  const ext = typeSub || "dat";
-  const fileName = `${messageId}.${ext}`;
-  
-  const form = new FormData();
-  form.append("reqtype", "fileupload");   // ✅ must be in form
-  form.append("userhash", "");            // optional, can stay empty
-  form.append("fileToUpload", buffer, fileName);
+        const [typeMain, typeSub] = fileType.split("/");
+        if (!typeMain) return res.status(400).json({ error: "Invalid fileType" });
 
-  const catboxResponse = await axios.post("https://catbox.moe/user/api.php", form, {
-    headers: form.getHeaders(),
-  });
+        const ext = typeSub || "dat";
+        const fileName = `${messageId}.${ext}`;
 
-  if (!catboxResponse.data || catboxResponse.data.startsWith("ERROR"))
-    return res.status(500).json({ error: "Failed to upload file to Catbox" });
+        const form = new FormData();
+        form.append("reqtype", "fileupload");
+        form.append("userhash", "");
+        form.append("fileToUpload", buffer, fileName);
 
-  fileUrl = catboxResponse.data;
+        const catboxResponse = await axios.post("https://catbox.moe/user/api.php", form, {
+          headers: form.getHeaders(),
+        });
 
-  // Only mark as sticker if frontend flagged it AND it's an image
-  finalIsSticker = (typeMain === "image") && Boolean(issticker);
-}
+        if (!catboxResponse.data || catboxResponse.data.startsWith("ERROR")) {
+          return res.status(500).json({ error: "Failed to upload file to Catbox" });
+        }
+
+        fileUrl = catboxResponse.data;
+        finalIsSticker = (typeMain === "image") && Boolean(issticker);
+      } catch (uploadErr) {
+        console.error("File upload error:", uploadErr);
+        return res.status(500).json({ error: "File upload failed" });
+      }
+    }
 
     // Save message
     const newMessage = new Message({
@@ -552,25 +559,26 @@ if (fileBase64 && fileType) {
       receiverName: receiver.name
     };
 
-    // Only emit to verified rooms
+    // Emit to sender
     const senderRoom = `user_${sender.id}`;
     const receiverRoom = `user_${receiver.id}`;
 
     const senderSockets = io.sockets.adapter.rooms.get(senderRoom);
+    if (senderSockets && senderSockets.size > 0) {
+      io.to(senderRoom).emit("newMessage", emitMessage);
+      io.to(senderRoom).emit("updateMyChats", {
+        type: "private",
+        id: receiver.id,
+        name: receiver.name,
+        username: receiver.username,
+        latestMessage: `${sender.name}: ${emitMessage.text?.slice(0, 50) || ""}`,
+        timestamp: emitMessage.timestamp
+      });
+    }
 
-if (senderSockets && senderSockets.size > 0) {
-  io.to(senderRoom).emit("newMessage", emitMessage);
-  io.to(senderRoom).emit("updateMyChats", {
-    type: "private",
-    id: receiver.id,
-    name: receiver.name,
-    username: receiver.username,
-    latestMessage: `${sender.name}: ${emitMessage.text?.slice(0, 50) || ""}`,
-    timestamp: emitMessage.timestamp
-  });
-}
-
-    if (io.sockets.adapter.rooms.has(receiverRoom)) {
+    // Emit to receiver
+    const receiverSockets = io.sockets.adapter.rooms.get(receiverRoom);
+    if (receiverSockets && receiverSockets.size > 0) {
       io.to(receiverRoom).emit("newMessage", emitMessage);
       io.to(receiverRoom).emit("updateMyChats", {
         type: "private",
@@ -663,33 +671,56 @@ app.get("/messages", async (req, res) => {
 app.post("/create", async (req, res) => {
   try {
     const { authToken, name, pass, gcpfpBase64, gcpfpType } = req.body;
-    if (!authToken || !pass) return res.status(400).json({ error: "authToken and pass are required" });
+    if (!authToken || !pass) {
+      return res.status(400).json({ error: "authToken and pass are required" });
+    }
 
+    // Validate owner
     const owner = await User.findOne({ authToken });
-    if (!owner) return res.status(401).json({ error: "Invalid authToken" });
+    if (!owner) {
+      return res.status(401).json({ error: "Invalid authToken" });
+    }
 
+    // Handle optional group profile picture upload
     let gcpfpUrl = null;
     if (gcpfpBase64 && gcpfpType) {
       const buffer = Buffer.from(gcpfpBase64, "base64");
+
+      if (buffer.length > 10 * 1024 * 1024) {
+        return res.status(400).json({ error: "File size exceeds 10MB limit" });
+      }
+
       const ext = gcpfpType.split("/")[1] || "png";
       const fileName = `gcpfp_${Date.now()}.${ext}`;
       const form = new FormData();
-      form.append("reqtype", "fileupload");   // ✅ must be in form
-      form.append("userhash", "");            // optional, can stay empty
+      form.append("reqtype", "fileupload");   // ✅ required for Catbox
+      form.append("userhash", "");            // optional
       form.append("fileToUpload", buffer, fileName);
 
-      const catboxResponse = await axios.post("https://catbox.moe/user/api.php", form, {
-        headers: form.getHeaders()
-      });
+      const catboxResponse = await axios.post(
+        "https://catbox.moe/user/api.php",
+        form,
+        { headers: form.getHeaders() }
+      );
+
+      if (!catboxResponse.data) {
+        return res.status(500).json({ error: "Failed to upload file to Catbox" });
+      }
+
+      if (catboxResponse.data.startsWith("ERROR")) {
+        return res.status(400).json({ error: `Catbox upload failed: ${catboxResponse.data}` });
+      }
 
       gcpfpUrl = catboxResponse.data;
     }
 
+    // Generate unique group ID
     let groupId;
     do {
       groupId = generateGroupId();
     } while (await Group.findOne({ id: groupId }));
 
+    // Save group
     const newGroup = new Group({
       id: groupId,
       ownerId: owner.id,
@@ -805,15 +836,21 @@ app.post("/groupmessage/:groupid", async (req, res) => {
     const { groupid } = req.params;
     const { authToken, text, replyTo, fileBase64, fileType, issticker } = req.body;
 
-    if (!authToken) return res.status(400).json({ error: "authToken is required" });
+    if (!authToken) {
+      return res.status(400).json({ error: "authToken is required" });
+    }
 
     // Verify sender
     const sender = await User.findOne({ authToken });
-    if (!sender) return res.status(401).json({ error: "Invalid authToken" });
+    if (!sender) {
+      return res.status(401).json({ error: "Invalid authToken" });
+    }
 
     // Verify group
     const group = await Group.findOne({ id: groupid });
-    if (!group) return res.status(404).json({ error: "Group not found" });
+    if (!group) {
+      return res.status(404).json({ error: "Group not found" });
+    }
 
     // Generate unique message ID
     let messageId;
@@ -821,32 +858,47 @@ app.post("/groupmessage/:groupid", async (req, res) => {
       messageId = generateMessageId();
     } while (await GroupMessage.findOne({ id: messageId }));
 
-    // Handle file upload
+    // Handle optional file upload
     let fileUrl = null;
     let finalIsSticker = false;
     if (fileBase64 && fileType) {
       const buffer = Buffer.from(fileBase64, "base64");
-      if (buffer.length > 10 * 1024 * 1024)
+
+      // Check size
+      if (buffer.length > 10 * 1024 * 1024) {
         return res.status(400).json({ error: "File size exceeds 10MB limit" });
+      }
 
       const [typeMain, typeSub] = fileType.split("/");
       const ext = typeSub || "dat";
       const fileName = `${messageId}.${ext}`;
+
       const form = new FormData();
-      form.append("reqtype", "fileupload");   // ✅ must be in form
-      form.append("userhash", "");            // optional, can stay empty
+      form.append("reqtype", "fileupload");   // ✅ required by Catbox
+      form.append("userhash", "");            // optional
       form.append("fileToUpload", buffer, fileName);
 
-      const catboxResponse = await axios.post("https://catbox.moe/user/api.php", form, {
-        headers: form.getHeaders(),
-      });
+      let catboxResponse;
+      try {
+        catboxResponse = await axios.post("https://catbox.moe/user/api.php", form, {
+          headers: form.getHeaders(),
+        });
+      } catch (uploadErr) {
+        console.error("Catbox upload error:", uploadErr.message);
+        return res.status(502).json({ error: "Failed to reach Catbox upload service" });
+      }
 
-      if (!catboxResponse.data)
-        return res.status(500).json({ error: "Failed to upload file to Catbox" });
+      if (!catboxResponse.data) {
+        return res.status(500).json({ error: "Empty response from Catbox" });
+      }
+
+      if (typeof catboxResponse.data === "string" && catboxResponse.data.startsWith("ERROR")) {
+        return res.status(400).json({ error: `Catbox upload failed: ${catboxResponse.data}` });
+      }
 
       fileUrl = catboxResponse.data;
 
-      // Only mark as sticker if frontend set it AND it's an image
+      // Mark as sticker only if frontend set it AND it's an image
       finalIsSticker = (typeMain === "image") && Boolean(issticker);
     }
 
@@ -859,7 +911,7 @@ app.post("/groupmessage/:groupid", async (req, res) => {
       fileUrl,
       fileType: fileType || null,
       replyTo: replyTo || null,
-      issticker: finalIsSticker
+      issticker: finalIsSticker,
     });
     await newMessage.save();
 
@@ -869,20 +921,23 @@ app.post("/groupmessage/:groupid", async (req, res) => {
       senderName: sender.name,
     };
 
-    // Emit to everyone in the group room
+    // Emit to group members
     io.to(`group_${group.id}`).emit("newGroupMessage", emitMessage);
 
-    // Emit general /mychats update for group members
+    // Update chats list
     const chatUpdate = {
       type: "group",
       id: group.id,
       name: group.name,
       latestMessage: `${sender.name}: ${emitMessage.text?.slice(0, 50) || ""}`,
-      timestamp: emitMessage.timestamp
+      timestamp: emitMessage.timestamp,
     };
     io.to(`group_${group.id}`).emit("updateMyChats", chatUpdate);
 
-    return res.status(201).json({ message: "Message sent to group successfully", data: emitMessage });
+    return res.status(201).json({
+      message: "Message sent to group successfully",
+      data: emitMessage,
+    });
   } catch (err) {
     console.error("Error sending group message:", err);
     return res.status(500).json({ error: "Internal server error" });
@@ -1049,49 +1104,95 @@ app.post("/channelmessage/:channelId", async (req, res) => {
     const { channelId } = req.params;
     const { authToken, text, fileBase64, fileType, issticker } = req.body;
 
+    // Validate auth
+    if (!authToken) {
+      return res.status(400).json({ error: "authToken is required" });
+    }
+
     const sender = await User.findOne({ authToken });
-    if (!sender) return res.status(401).json({ error: "Invalid authToken" });
+    if (!sender) {
+      return res.status(401).json({ error: "Invalid authToken" });
+    }
 
+    // Validate channel
     const channel = await Channel.findOne({ id: channelId });
-    if (!channel) return res.status(404).json({ error: "Channel not found" });
+    if (!channel) {
+      return res.status(404).json({ error: "Channel not found" });
+    }
 
-    const isAdmin = channel.admins.some(a => a.userId === sender.id);
-    if (!isAdmin) return res.status(403).json({ error: "Only admins/owner can send messages" });
+    // Admin/owner restriction
+    const isAdmin = channel.admins.some(a => a.userId === sender.id) || channel.ownerId === sender.id;
+    if (!isAdmin) {
+      return res.status(403).json({ error: "Only admins/owner can send messages" });
+    }
 
+    // Handle optional file upload
     let fileUrl = null;
     let finalIsSticker = false;
     if (fileBase64 && fileType) {
       const buffer = Buffer.from(fileBase64, "base64");
-      if (buffer.length > 10 * 1024 * 1024) return res.status(400).json({ error: "File too large" });
+
+      if (buffer.length > 10 * 1024 * 1024) {
+        return res.status(400).json({ error: "File size exceeds 10MB limit" });
+      }
 
       const [typeMain, typeSub] = fileType.split("/");
       const ext = typeSub || "dat";
       const fileName = `${generateMessageId()}.${ext}`;
+
       const form = new FormData();
-      form.append("reqtype", "fileupload");   // ✅ must be in form
-      form.append("userhash", "");            // optional, can stay empty
+      form.append("reqtype", "fileupload");   // ✅ required
+      form.append("userhash", "");            // optional
       form.append("fileToUpload", buffer, fileName);
 
-      const catboxResponse = await axios.post("https://catbox.moe/user/api.php", form, {
-        headers: form.getHeaders(),
-      });
+      let catboxResponse;
+      try {
+        catboxResponse = await axios.post("https://catbox.moe/user/api.php", form, {
+          headers: form.getHeaders(),
+        });
+      } catch (uploadErr) {
+        console.error("Catbox upload error:", uploadErr.message);
+        return res.status(502).json({ error: "Failed to reach Catbox upload service" });
+      }
+
+      if (!catboxResponse.data) {
+        return res.status(500).json({ error: "Empty response from Catbox" });
+      }
+
+      if (typeof catboxResponse.data === "string" && catboxResponse.data.startsWith("ERROR")) {
+        return res.status(400).json({ error: `Catbox upload failed: ${catboxResponse.data}` });
+      }
+
       fileUrl = catboxResponse.data;
       finalIsSticker = (typeMain === "image") && Boolean(issticker);
     }
 
-    const messageId = generateMessageId();
+    // Generate unique message ID
+    let messageId;
+    do {
+      messageId = generateMessageId();
+    } while (await ChannelMessage.findOne({ id: messageId }));
+
+    // Save message
     const newMsg = new ChannelMessage({
       id: messageId,
       channelId,
       senderId: sender.id,
       text: text || "",
       fileUrl,
-      fileType,
-      issticker: finalIsSticker
+      fileType: fileType || null,
+      issticker: finalIsSticker,
     });
     await newMsg.save();
 
-    const emitMsg = { ...newMsg.toObject(), senderName: sender.name, senderUsername: sender.username };
+    // Prepare emit object
+    const emitMsg = {
+      ...newMsg.toObject(),
+      senderName: sender.name,
+      senderUsername: sender.username,
+    };
+
+    // Emit to all subscribers of the channel
     io.to(`channel_${channel.id}`).emit("newChannelMessage", emitMsg);
 
     return res.status(201).json({ message: "Message sent", data: emitMsg });
@@ -1100,6 +1201,7 @@ app.post("/channelmessage/:channelId", async (req, res) => {
     res.status(500).json({ error: "Internal server error" });
   }
 });
+
 app.post("/promotechanneluser/:channelId", async (req, res) => {
   const { channelId } = req.params;
   const { authToken, userId } = req.body;
