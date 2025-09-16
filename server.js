@@ -752,6 +752,88 @@ app.get("/messages", async (req, res) => {
     return res.status(500).json({ error: "Internal server error" });
   }
 });
+app.get("/messages/:recipientId", async (req, res) => {
+  try {
+    const { recipientId } = req.params;
+    const { userid, limit = 50, from, to } = req.query;
+
+    if (!userid) return res.status(400).json({ error: "userid is required" });
+    if (!recipientId) return res.status(400).json({ error: "recipientId is required" });
+
+    const query = {
+      $or: [
+        { senderId: Number(userid), receiverId: Number(recipientId) },
+        { senderId: Number(recipientId), receiverId: Number(userid) }
+      ],
+      replyTo: null
+    };
+
+    if (from || to) query.timestamp = {};
+    if (from) query.timestamp.$gte = new Date(from);
+    if (to) query.timestamp.$lte = new Date(to);
+
+    // Fetch main messages
+    const messages = await Message.find(query)
+      .sort({ timestamp: -1 })
+      .limit(Number(limit));
+
+    const messageIds = messages.map(msg => msg.id);
+
+    // Fetch replies
+    const replies = await Message.find({ replyTo: { $in: messageIds } }).sort({ timestamp: 1 });
+
+    const messagesWithReplies = await Promise.all(messages.map(async (msg) => {
+      const sender = await User.findOne({ id: msg.senderId });
+      const receiver = await User.findOne({ id: msg.receiverId });
+
+      const msgReplies = await Promise.all(
+        replies
+          .filter(r => r.replyTo === msg.id)
+          .map(async (r) => {
+            const replySender = await User.findOne({ id: r.senderId });
+            const replyReceiver = await User.findOne({ id: r.receiverId });
+            return {
+              id: r.id,
+              senderId: r.senderId,
+              senderUsername: replySender?.username || null,
+              senderName: replySender?.name || null,
+              receiverId: r.receiverId,
+              receiverUsername: replyReceiver?.username || null,
+              receiverName: replyReceiver?.name || null,
+              text: r.text,
+              fileUrl: r.fileUrl,
+              fileType: r.fileType,
+              issticker: r.issticker || false,
+              timestamp: r.timestamp,
+              replyTo: r.replyTo
+            };
+          })
+      );
+
+      return {
+        id: msg.id,
+        senderId: msg.senderId,
+        senderUsername: sender?.username || null,
+        senderName: sender?.name || null,
+        receiverId: msg.receiverId,
+        receiverUsername: receiver?.username || null,
+        receiverName: receiver?.name || null,
+        text: msg.text,
+        fileUrl: msg.fileUrl,
+        fileType: msg.fileType,
+        issticker: msg.issticker || false,
+        timestamp: msg.timestamp,
+        replyTo: msg.replyTo,
+        replies: msgReplies
+      };
+    }));
+
+    return res.status(200).json(messagesWithReplies);
+  } catch (err) {
+    console.error("Error fetching messages:", err);
+    return res.status(500).json({ error: "Internal server error" });
+  }
+});
 
 app.post("/create", async (req, res) => {
   try {
