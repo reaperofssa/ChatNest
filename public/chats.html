@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Latest Chats</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f4f4f4;
+      padding: 20px;
+    }
+    .container {
+      max-width: 700px;
+      margin: auto;
+      background: #fff;
+      padding: 20px;
+      border-radius: 8px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+    }
+    .user-info {
+      padding: 15px;
+      border-bottom: 1px solid #ddd;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .user-info img {
+      width: 50px;
+      height: 50px;
+      border-radius: 50%;
+    }
+    .new-chat {
+      margin: 20px 0;
+    }
+    .chats {
+      margin-top: 15px;
+    }
+    .chat {
+      padding: 12px;
+      border-bottom: 1px solid #eee;
+      cursor: pointer;
+    }
+    .chat:hover {
+      background: #f0f0f0;
+    }
+    .chat small {
+      color: gray;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <!-- Logged in user info -->
+    <div id="me" class="user-info">
+      <img id="profileimg" src="" alt="profile">
+      <div>
+        <div id="name"></div>
+        <small id="username"></small>
+      </div>
+    </div>
+
+    <!-- New chat -->
+    <div class="new-chat">
+      <input type="text" id="newChatUser" placeholder="Enter username..." />
+      <button onclick="startNewChat()">New Chat</button>
+    </div>
+
+    <!-- Latest chats -->
+    <h3>Latest Chats</h3>
+    <div id="chats" class="chats"></div>
+  </div>
+
+  <script>
+    const authToken = localStorage.getItem("authToken");
+    if (!authToken) {
+      alert("Not logged in!");
+      window.location.href = "/login.html";
+    }
+
+    // Load /me info
+    async function loadMe() {
+      const res = await fetch("/me", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ authToken })
+      });
+      const me = await res.json();
+      if (me.error) {
+        alert(me.error);
+        return;
+      }
+      document.getElementById("profileimg").src = me.profileimg;
+      document.getElementById("name").innerText = me.name;
+      document.getElementById("username").innerText = "@" + me.username;
+    }
+
+    // Load chats
+    async function loadChats() {
+      const res = await fetch(`/mychats?authToken=${authToken}`);
+      const chats = await res.json();
+      if (chats.error) {
+        alert(chats.error);
+        return;
+      }
+      const chatsDiv = document.getElementById("chats");
+      chatsDiv.innerHTML = "";
+      chats.forEach(c => {
+        const div = document.createElement("div");
+        div.className = "chat";
+        div.innerHTML = `
+          <b>${c.name}</b> (@${c.username || c.id})<br>
+          <small>${c.latestMessage || ""}</small>
+        `;
+        div.onclick = () => window.location.href = `/chat/${c.id}`;
+        chatsDiv.appendChild(div);
+      });
+    }
+
+    // Start new chat
+    async function startNewChat() {
+      const username = document.getElementById("newChatUser").value.trim();
+      if (!username) return;
+      const res = await fetch(`/user/${username}`);
+      const data = await res.json();
+      if (data.error) {
+        alert(data.error);
+        return;
+      }
+      window.location.href = `/chat/${data.id}`;
+    }
+
+    loadMe();
+    loadChats();
+  </script>
+</body>
+</html>
