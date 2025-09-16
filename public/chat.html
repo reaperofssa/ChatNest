@@ -80,10 +80,17 @@ async function loadMessages() {
   loading = true;
   try {
     const res = await fetch(`/messages/${recipientId}?limit=${limit}&from=${offset}`);
-    const messages = await res.json();
+    let messages = await res.json();
+
+    // Ensure messages is an array
+    if (!Array.isArray(messages)) messages = [];
+
     if (messages.length < limit) allLoaded = true;
     offset += messages.length;
-    messages.reverse().forEach(msg => chatContainer.appendChild(createMessageElement(msg)));
+
+    // reverse safely
+    messages.slice().reverse().forEach(msg => chatContainer.appendChild(createMessageElement(msg)));
+
   } catch(e) { console.error(e); }
   loading = false;
 }
