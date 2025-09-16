@@ -16,7 +16,8 @@ const io = new Server(server);
 const PORT = 7860;
 
 // Middleware
-app.use(bodyParser.json());
+app.use(bodyParser.json({ limit: '10mb' }));
+app.use(bodyParser.urlencoded({ limit: '10mb', extended: true }));
 app.use(express.static("public"));
 // MongoDB connection
 mongoose.connect("mongodb+srv://painyt636:paijyf@cluster0.wtrtlek.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0", {
