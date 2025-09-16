@@ -436,9 +436,31 @@ app.post("/message/:userid", async (req, res) => {
       receiverName: receiver.name
     };
 
-    io.to(`user_${sender.id}`).emit("newMessage", emitMessage);
-    io.to(`user_${receiver.id}`).emit("newMessage", emitMessage);
+    // Emit to sender and receiver rooms
+io.to(`user_${sender.id}`).emit("newMessage", emitMessage);
+io.to(`user_${receiver.id}`).emit("newMessage", emitMessage);
 
+// Emit general /mychats update
+const chatUpdateSender = {
+  type: "private",
+  id: receiver.id,
+  name: receiver.name,
+  username: receiver.username,
+  latestMessage: `${sender.name}: ${emitMessage.text?.slice(0, 50) || ""}`,
+  timestamp: emitMessage.timestamp
+};
+
+const chatUpdateReceiver = {
+  type: "private",
+  id: sender.id,
+  name: sender.name,
+  username: sender.username,
+  latestMessage: `${sender.name}: ${emitMessage.text?.slice(0, 50) || ""}`,
+  timestamp: emitMessage.timestamp
+};
+
+io.to(`user_${sender.id}`).emit("updateMyChats", chatUpdateSender);
+io.to(`user_${receiver.id}`).emit("updateMyChats", chatUpdateReceiver);
     return res.status(201).json({ message: "Message sent successfully", data: emitMessage });
   } catch (err) {
     console.error("Error sending message:", err);
@@ -710,9 +732,20 @@ app.post("/groupmessage/:groupid", async (req, res) => {
       senderName: sender.name,
     };
 
-    // Emit to everyone in the group room
-    io.to(`group_${group.id}`).emit("newGroupMessage", emitMessage);
+   // Emit to everyone in the group room
+io.to(`group_${group.id}`).emit("newGroupMessage", emitMessage);
 
+// Emit general /mychats update for group members (optimized)
+const chatUpdate = {
+  type: "group",
+  id: group.id,
+  name: group.name,
+  latestMessage: `${sender.name}: ${emitMessage.text?.slice(0, 50) || ""}`,
+  timestamp: emitMessage.timestamp
+};
+
+// Broadcast to all sockets in the group room
+io.to(`group_${group.id}`).emit("updateMyChats", chatUpdate);
     return res.status(201).json({ message: "Message sent to group successfully", data: emitMessage });
   } catch (err) {
     console.error("Error sending group message:", err);
@@ -776,6 +809,74 @@ app.get("/groupmessages/:groupid", async (req, res) => {
     return res.status(200).json(messagesWithReplies);
   } catch (err) {
     console.error("Error fetching group messages:", err);
+    return res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+app.get("/mychats", async (req, res) => {
+  try {
+    const { authToken } = req.query;
+    if (!authToken) return res.status(400).json({ error: "authToken is required" });
+
+    const me = await User.findOne({ authToken });
+    if (!me) return res.status(401).json({ error: "Invalid authToken" });
+
+    // ----- PRIVATE CHATS -----
+    const messages = await Message.find({
+      $or: [{ senderId: me.id }, { receiverId: me.id }]
+    }).sort({ timestamp: -1 });
+
+    const privateChatsMap = new Map(); // key: otherUserId, value: latest message
+    messages.forEach(msg => {
+      const otherId = msg.senderId === me.id ? msg.receiverId : msg.senderId;
+      if (!privateChatsMap.has(otherId)) privateChatsMap.set(otherId, msg);
+    });
+
+    const privateChats = await Promise.all(
+      Array.from(privateChatsMap.entries()).map(async ([otherId, msg]) => {
+        const otherUser = await User.findOne({ id: otherId });
+        const sender = await User.findOne({ id: msg.senderId });
+        return {
+          type: "private",
+          id: otherUser.id,
+          name: otherUser.name,
+          username: otherUser.username,
+          latestMessage: `${sender.name}: ${msg.text?.slice(0, 50) || ""}`,
+          timestamp: msg.timestamp
+        };
+      })
+    );
+
+    // ----- GROUP CHATS -----
+    const groups = await Group.find({ "members.userId": me.id });
+    const groupChats = await Promise.all(
+      groups.map(async group => {
+        const latestMsg = await GroupMessage.findOne({ groupId: group.id })
+          .sort({ timestamp: -1 });
+
+        let latestText = "";
+        if (latestMsg) {
+          const sender = await User.findOne({ id: latestMsg.senderId });
+          latestText = `${sender.name}: ${latestMsg.text?.slice(0, 50) || ""}`;
+        }
+
+        return {
+          type: "group",
+          id: group.id,
+          name: group.name,
+          latestMessage: latestText,
+          timestamp: latestMsg?.timestamp || group.creationDate
+        };
+      })
+    );
+
+    // Merge and sort by timestamp descending
+    const allChats = [...privateChats, ...groupChats].sort((a, b) => b.timestamp - a.timestamp);
+
+    return res.status(200).json(allChats);
+
+  } catch (err) {
+    console.error("Error fetching mychats:", err);
     return res.status(500).json({ error: "Internal server error" });
   }
 });
