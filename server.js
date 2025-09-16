@@ -388,6 +388,9 @@ app.get("/friends/:username", async (req, res) => {
   }
 });
 
+const typingUsers = {}; 
+// typingUsers[room] = Set of userIds currently typing in that room
+
 io.on("connection", (socket) => {
   console.log("New client connected:", socket.id);
 
@@ -461,6 +464,50 @@ io.on("connection", (socket) => {
       console.log(`User ${user.username} joined channel room: ${channel.name}`);
     } catch (err) {
       console.error("Error joining channel room:", err);
+    }
+  });
+
+  // ✨ Handle typing indicator
+  socket.on("typing", async ({ room, authToken }) => {
+    try {
+      const user = await User.findOne({ authToken });
+      if (!user) return;
+
+      if (!typingUsers[room]) typingUsers[room] = new Set();
+      typingUsers[room].add(user.id);
+
+      // Fetch all users currently typing
+      const usersTyping = await User.find({ id: { $in: Array.from(typingUsers[room]) } }, "id username name");
+
+      // Broadcast to everyone else in the room
+      socket.to(room).emit("showTyping", { users: usersTyping });
+
+      // Auto-remove after 5s if no "stopTyping"
+      setTimeout(async () => {
+        if (typingUsers[room] && typingUsers[room].has(user.id)) {
+          typingUsers[room].delete(user.id);
+          const stillTyping = await User.find({ id: { $in: Array.from(typingUsers[room]) } }, "id username name");
+          socket.to(room).emit("showTyping", { users: stillTyping });
+        }
+      }, 5000);
+    } catch (err) {
+      console.error("Error in typing event:", err);
+    }
+  });
+
+  // ✨ Stop typing
+  socket.on("stopTyping", async ({ room, authToken }) => {
+    try {
+      const user = await User.findOne({ authToken });
+      if (!user) return;
+
+      if (typingUsers[room]) {
+        typingUsers[room].delete(user.id);
+        const stillTyping = await User.find({ id: { $in: Array.from(typingUsers[room]) } }, "id username name");
+        socket.to(room).emit("showTyping", { users: stillTyping });
+      }
+    } catch (err) {
+      console.error("Error in stopTyping event:", err);
     }
   });
 
