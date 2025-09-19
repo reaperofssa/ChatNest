@@ -37,6 +37,12 @@
       background: white;
       border: 1px solid #ddd;
     }
+    #no-messages {
+      text-align: center;
+      color: #666;
+      padding: 20px;
+      display: none;
+    }
     .message {
       margin-bottom: 12px;
       padding: 8px 12px;
@@ -177,7 +183,9 @@
       <button onclick="window.location.href='/chats.html'">←</button>
       <span id="recipient-name"></span>
     </div>
-    <div id="messages"></div>
+    <div id="messages">
+      <div id="no-messages">No messages yet. Start the conversation!</div>
+    </div>
     <div id="typing-indicator"></div>
     <div id="input-container">
       <div id="reply-input-preview" style="display: none;"></div>
@@ -208,9 +216,17 @@
     const recipientId = params[params.length - 1];
     const authToken = localStorage.getItem("authToken");
 
+    console.log("authToken:", authToken);
+    console.log("recipientId:", recipientId);
+
     if (!authToken) {
       alert("No authToken found in localStorage. Please log in first.");
       window.location.href = "/login";
+    }
+
+    if (!recipientId || isNaN(recipientId)) {
+      alert("Invalid recipient ID in URL.");
+      window.location.href = "/chats.html";
     }
 
     // Fetch recipient details
@@ -225,7 +241,7 @@
             ${data.verified ? '<span class="verified">[Verified]</span>' : ''}
           `;
         } else {
-          console.error("Error:", data.error);
+          console.error("Error fetching recipient:", data.error);
           document.getElementById("recipient-name").textContent = "Unknown User";
         }
       } catch (err) {
@@ -246,16 +262,24 @@
         const url = before 
           ? `/messages/${recipientId}?authToken=${encodeURIComponent(authToken)}&limit=20&before=${encodeURIComponent(before)}`
           : `/messages/${recipientId}?authToken=${encodeURIComponent(authToken)}&limit=20`;
+        console.log("Fetching messages from:", url);
         const res = await fetch(url);
         const data = await res.json();
 
         if (res.ok) {
-          renderMessages(data, recipientId, !before);
-          if (data.length > 0) {
-            earliestTimestamp = data[data.length - 1].timestamp;
+          console.log("Messages received:", data);
+          const noMessagesDiv = document.getElementById("no-messages");
+          if (data.length === 0 && !before) {
+            noMessagesDiv.style.display = "block";
+          } else {
+            noMessagesDiv.style.display = "none";
+            renderMessages(data, recipientId, !before);
+            if (data.length > 0) {
+              earliestTimestamp = data[data.length - 1].timestamp;
+            }
           }
         } else {
-          console.error("Error:", data.error);
+          console.error("Error fetching messages:", data.error);
           alert(data.error || "Failed to load messages");
         }
       } catch (err) {
@@ -272,9 +296,10 @@
         const res = await fetch(`/get/${messageId}?authToken=${encodeURIComponent(authToken)}`);
         const data = await res.json();
         if (res.ok) {
+          console.log("Message metadata:", data);
           return data;
         } else {
-          console.error("Error fetching message:", data.error);
+          console.error("Error fetching message metadata:", data.error);
           return null;
         }
       } catch (err) {
@@ -295,7 +320,6 @@
         div.classList.add(isSender ? "sent" : "received");
 
         let content = "";
-        // Username with verified badge
         content += `
           <div class="username">
             ${escapeHtml(msg.senderName || msg.senderUsername || "Unknown")}
@@ -303,7 +327,6 @@
           </div>
         `;
 
-        // Reply thumbnail if replyTo exists
         if (msg.replyTo) {
           const replyData = await fetchMessageMetadata(msg.replyTo);
           if (replyData) {
@@ -318,13 +341,12 @@
           }
         }
 
-        // Message content
         if (msg.fileUrl) {
           if (msg.issticker) {
             content += `<img src="${msg.fileUrl}" alt="Sticker" class="sticker">`;
           } else if (msg.fileType?.startsWith("image")) {
             content += `<img src="${msg.fileUrl}" alt="Image">`;
- =          } else if (msg.fileType?.startsWith("video")) {
+          } else if (msg.fileType?.startsWith("video")) {
             content += `<video controls src="${msg.fileUrl}"></video>`;
           } else if (msg.fileType?.startsWith("audio")) {
             content += `<audio controls src="${msg.fileUrl}"></audio>`;
@@ -355,7 +377,6 @@
           container.insertBefore(div, container.firstChild);
         }
 
-        // Render replies
         if (msg.replies && msg.replies.length > 0) {
           msg.replies.forEach(reply => {
             const replyDiv = document.createElement("div");
@@ -432,6 +453,8 @@
 
     // WebSocket new message
     socket.on("newMessage", (msg) => {
+      console.log("New message received:", msg);
+      document.getElementById("no-messages").style.display = "none";
       renderMessages([msg], recipientId, true);
     });
 
@@ -506,6 +529,7 @@
           issticker
         };
 
+        console.log("Sending message:", body);
         const res = await fetch(`/message/${recipientId}`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -514,11 +538,13 @@
 
         const data = await res.json();
         if (res.ok) {
+          console.log("Message sent successfully:", data);
           messageInput.value = "";
           clearMediaPreview();
           replyingTo = null;
           updateReplyPreview();
         } else {
+          console.error("Error sending message:", data.error);
           alert(data.error || "Failed to send message");
         }
       } catch (err) {
