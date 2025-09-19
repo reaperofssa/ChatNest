@@ -20,6 +20,11 @@
       min-height: 100vh;
     }
 
+    /* Fixed background to prevent white flashing */
+    body, html, #chat-container {
+      background: linear-gradient(135deg, #1a1a1a 0%, #2d1b69 50%, #000000 100%) !important;
+    }
+
     /* Toned down background animations - more professional */
     body::before {
       content: '';
@@ -117,6 +122,7 @@
       display: flex;
       flex-direction: column;
       gap: 12px;
+      background: transparent !important;
     }
 
     /* Professional message bubbles */
@@ -211,9 +217,17 @@
       margin: 0;
     }
 
+    /* Fixed no-messages styling */
+    #no-messages {
+      text-align: center;
+      color: rgba(255, 255, 255, 0.6);
+      padding: 40px 20px;
+      font-size: 16px;
+    }
+
     /* Compact and organized input container */
     #input-container {
-      background: rgba(0, 0, 0, 0.6);
+      background: rgba(0, 0, 0, 0.6) !important;
       backdrop-filter: blur(20px);
       -webkit-backdrop-filter: blur(20px);
       border-top: 1px solid rgba(139, 92, 246, 0.2);
@@ -301,14 +315,14 @@
     #message-input {
       width: 100%;
       padding: 12px 16px;
-      background: rgba(255, 255, 255, 0.1);
+      background: rgba(255, 255, 255, 0.1) !important;
       border: 1px solid rgba(139, 92, 246, 0.2);
       border-radius: 16px;
       resize: none;
       min-height: 44px;
       max-height: 120px;
       overflow-y: auto;
-      color: white;
+      color: white !important;
       font-size: 16px;
       backdrop-filter: blur(10px);
       transition: all 0.3s ease;
@@ -319,7 +333,7 @@
     #message-input:focus {
       outline: none;
       border-color: rgba(139, 92, 246, 0.4);
-      background: rgba(255, 255, 255, 0.15);
+      background: rgba(255, 255, 255, 0.15) !important;
     }
 
     #message-input::placeholder {
@@ -530,6 +544,34 @@
       40% { transform: scale(1); opacity: 1; }
     }
 
+    /* Added loading and upload progress styles */
+    .loading-spinner {
+      width: 16px;
+      height: 16px;
+      border: 2px solid rgba(139, 92, 246, 0.3);
+      border-top: 2px solid #8b5cf6;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      display: inline-block;
+      margin-right: 8px;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    .upload-progress {
+      background: rgba(139, 92, 246, 0.2);
+      padding: 8px 12px;
+      border-radius: 8px;
+      font-size: 13px;
+      color: white;
+      display: flex;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+
     /* Mobile responsiveness */
     @media (max-width: 768px) {
       #header {
@@ -576,23 +618,25 @@
 </head>
 <body>
   <div id="chat-container">
-    <!-- Clickable header for navigation -->
-    <div id="header" onclick="window.location.href = '/info/' + recipientId">
+    <!-- Made header and 3 dots clickable for navigation -->
+    <div id="header" onclick="navigateToInfo()">
       <button onclick="event.stopPropagation(); window.history.back()">←</button>
       <div class="user-info">
-        <img src="/placeholder.svg?height=42&width=42" alt="User Avatar">
+        <img id="recipient-avatar" src="/placeholder.svg?height=42&width=42" alt="User Avatar">
         <div class="user-details">
-          <h3 id="recipient-name">John Doe</h3>
-          <p id="recipient-status">Online</p>
+          <h3 id="recipient-name">Loading...</h3>
+          <p id="recipient-status">Connecting...</p>
         </div>
       </div>
       <button onclick="event.stopPropagation()">📞</button>
       <button onclick="event.stopPropagation()">📹</button>
-      <button onclick="event.stopPropagation()">⋮</button>
+      <button onclick="event.stopPropagation(); navigateToInfo()">⋮</button>
     </div>
 
     <div id="messages">
-      <!-- Messages will be populated here -->
+      <div id="no-messages" style="display: none;">
+        <p>No messages yet. Start the conversation!</p>
+      </div>
     </div>
 
     <div id="typing-indicator" style="display: none;">
@@ -633,22 +677,305 @@
     </div>
   </div>
 
+  <!-- Added socket.io and implemented real functionality -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.5.0/socket.io.min.js"></script>
   <script>
-    let currentUser = { id: 1, name: "You", verified: true };
-    let recipientId = 2;
-    let recipient = { id: 2, name: "John Doe", verified: false };
-    let isSticker = false;
+    const socket = io();
+    let isLoading = false;
+    let earliestTimestamp = null;
     let replyingTo = null;
-    let typingTimeout;
-    let isTyping = false;
+    let typingTimeout = null;
+    let recipientData = null;
+    let isSticker = false;
+    const MAX_CHARS = 1000;
 
-    // Initialize
+    const params = window.location.pathname.split("/");
+    const recipientId = params[params.length - 1];
+    const authToken = localStorage.getItem("authToken");
+
+    console.log("authToken:", authToken);
+    console.log("recipientId:", recipientId);
+
+    function navigateToInfo() {
+      window.location.href = `/info/${recipientId}`;
+    }
+
     document.addEventListener('DOMContentLoaded', function() {
+      if (!authToken) {
+        showCustomAlert("Authentication Required", "Please log in to continue.");
+        window.location.href = "/login";
+        return;
+      }
+      
+      loadRecipientData();
       loadStickers();
       setupEventListeners();
       loadMessages();
       updateCharCounter();
+      setupSocketListeners();
     });
+
+    async function loadRecipientData() {
+      try {
+        const res = await fetch(`/user/id/${recipientId}`);
+        const data = await res.json();
+        
+        if (res.ok) {
+          recipientData = data;
+          document.getElementById("recipient-name").textContent = data.name || data.username;
+          document.getElementById("recipient-avatar").src = data.profileimg || "/placeholder.svg?height=42&width=42";
+          
+          updateOnlineStatus();
+        } else {
+          console.error("Error loading recipient data:", data.error);
+          document.getElementById("recipient-name").textContent = "Unknown User";
+        }
+      } catch (err) {
+        console.error("Error loading recipient data:", err);
+        document.getElementById("recipient-name").textContent = "Unknown User";
+      }
+    }
+
+    function updateOnlineStatus() {
+      const lastSeen = localStorage.getItem(`lastSeen_${recipientId}`);
+      const statusElement = document.getElementById("recipient-status");
+      
+      if (lastSeen) {
+        const lastSeenDate = new Date(lastSeen);
+        const now = new Date();
+        const diffMinutes = Math.floor((now - lastSeenDate) / (1000 * 60));
+        
+        if (diffMinutes < 5) {
+          statusElement.textContent = "Online";
+          statusElement.style.color = "#10b981";
+        } else if (diffMinutes < 60) {
+          statusElement.textContent = `Last seen ${diffMinutes}m ago`;
+        } else if (diffMinutes < 1440) {
+          const hours = Math.floor(diffMinutes / 60);
+          statusElement.textContent = `Last seen ${hours}h ago`;
+        } else {
+          statusElement.textContent = "Last seen recently";
+        }
+      } else {
+        statusElement.textContent = "Last seen recently";
+      }
+    }
+
+    async function loadMessages(before = null) {
+      if (isLoading) return;
+      isLoading = true;
+
+      if (before) {
+        const loadingDiv = document.createElement('div');
+        loadingDiv.innerHTML = '<div class="loading-spinner"></div> Loading older messages...';
+        loadingDiv.id = 'loading-messages';
+        document.getElementById('messages').insertBefore(loadingDiv, document.getElementById('messages').firstChild);
+      }
+
+      try {
+        const url = before 
+          ? `/messages/${recipientId}?authToken=${encodeURIComponent(authToken)}&limit=20&before=${encodeURIComponent(before)}`
+          : `/messages/${recipientId}?authToken=${encodeURIComponent(authToken)}&limit=20`;
+        
+        console.log("Fetching messages from:", url);
+        const res = await fetch(url);
+        const data = await res.json();
+
+        if (res.ok) {
+          console.log("Messages received:", data);
+          const noMessagesDiv = document.getElementById("no-messages");
+          if (data.length === 0 && !before) {
+            noMessagesDiv.style.display = "block";
+          } else {
+            noMessagesDiv.style.display = "none";
+            renderMessages(data.reverse(), recipientId, !before);
+            if (data.length > 0) {
+              earliestTimestamp = data[0].timestamp;
+            }
+          }
+        } else {
+          console.error("Error fetching messages:", data.error);
+          showCustomAlert("Error", data.error || "Failed to load messages");
+        }
+      } catch (err) {
+        console.error("Error fetching messages:", err);
+        showCustomAlert("Error", "Error loading messages");
+      } finally {
+        isLoading = false;
+        const loadingDiv = document.getElementById('loading-messages');
+        if (loadingDiv) loadingDiv.remove();
+      }
+    }
+
+    function setupSocketListeners() {
+      socket.on("newMessage", (msg) => {
+        console.log("New message received:", msg);
+        document.getElementById("no-messages").style.display = "none";
+        renderMessages([msg], recipientId, true);
+        
+        // Update last seen for sender
+        localStorage.setItem(`lastSeen_${msg.senderid}`, new Date().toISOString());
+        if (msg.senderid == recipientId) {
+          updateOnlineStatus();
+        }
+      });
+
+      socket.on("showTyping", ({ users }) => {
+        const typingIndicator = document.getElementById("typing-indicator");
+        const typingText = document.getElementById("typing-text");
+        
+        if (users.length > 0) {
+          const names = users.map(u => (u.name || u.username) + (u.verified ? ' ✓' : '')).join(", ");
+          typingText.textContent = `${names} ${users.length > 1 ? "are" : "is"} typing...`;
+          typingIndicator.style.display = "flex";
+        } else {
+          typingIndicator.style.display = "none";
+        }
+      });
+
+      socket.on("hideTyping", () => {
+        document.getElementById("typing-indicator").style.display = "none";
+      });
+    }
+
+    function renderMessages(messages, recipientId, scrollToBottom = false) {
+      const messagesContainer = document.getElementById("messages");
+      const currentScrollTop = messagesContainer.scrollTop;
+      const currentScrollHeight = messagesContainer.scrollHeight;
+
+      messages.forEach(msg => {
+        const messageDiv = document.createElement("div");
+        const isSent = msg.senderid != recipientId;
+        const sender = isSent ? { id: msg.senderid, name: "You", verified: false } : recipientData;
+        
+        messageDiv.className = `message ${isSent ? 'sent' : 'received'}${sender?.verified ? ' verified' : ''}`;
+        
+        let content = '';
+        
+        if (msg.replyto) {
+          content += `<div style="background: rgba(255,255,255,0.1); padding: 8px; border-radius: 8px; margin-bottom: 8px; font-size: 12px;">
+            Replying to: ${msg.replyto.text || 'Media'}
+          </div>`;
+        }
+        
+        if (!isSent && sender) {
+          content += `<div class="message-header">
+            ${sender.name || sender.username}
+            ${sender.verified ? '<img src="/verified.png" alt="Verified" class="verified-badge">' : ''}
+          </div>`;
+        }
+        
+        if (msg.fileurl) {
+          if (msg.issticker) {
+            messageDiv.classList.add('sticker-message');
+            content += `<img src="${msg.fileurl}" alt="Sticker">`;
+          } else {
+            const fileType = getFileType(msg.fileurl);
+            if (fileType === 'video') {
+              content += `<video controls><source src="${msg.fileurl}"></video>`;
+            } else if (fileType === 'audio') {
+              content += `<audio controls><source src="${msg.fileurl}"></audio>`;
+            } else {
+              content += `<img src="${msg.fileurl}" alt="Media">`;
+            }
+          }
+        }
+        
+        if (msg.text) {
+          content += `<div>${msg.text}</div>`;
+        }
+        
+        content += `<div class="message-time">${formatTime(new Date(msg.timestamp))}</div>`;
+        
+        messageDiv.innerHTML = content;
+        messageDiv.onclick = () => replyToMessage(msg);
+        
+        messagesContainer.appendChild(messageDiv);
+      });
+
+      if (scrollToBottom) {
+        messagesContainer.scrollTop = messagesContainer.scrollHeight;
+      } else {
+        messagesContainer.scrollTop = currentScrollTop + (messagesContainer.scrollHeight - currentScrollHeight);
+      }
+    }
+
+    async function sendMessage() {
+      const messageInput = document.getElementById("message-input");
+      const sendButton = document.getElementById("send-button");
+      const text = messageInput.value.trim();
+      const file = document.getElementById("file-input").files[0];
+      
+      if (!text && !file) {
+        showCustomAlert("Empty Message", "Please enter a message or select a file to send.");
+        return;
+      }
+      
+      if (text.length > MAX_CHARS) {
+        showCustomAlert("Message Too Long", `Message exceeds ${MAX_CHARS} character limit.`);
+        return;
+      }
+      
+      sendButton.disabled = true;
+      
+      const progressDiv = document.createElement('div');
+      progressDiv.className = 'upload-progress';
+      progressDiv.innerHTML = '<div class="loading-spinner"></div> Sending message...';
+      document.getElementById('input-container').insertBefore(progressDiv, document.getElementById('input-container').firstChild);
+
+      try {
+        let fileBase64 = null;
+        let fileType = null;
+
+        if (file) {
+          fileBase64 = await new Promise((resolve) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result.split(",")[1]);
+            reader.readAsDataURL(file);
+          });
+          fileType = file.type;
+        }
+
+        const body = {
+          authToken,
+          text: text || "",
+          replyTo: replyingTo ? replyingTo.id : null,
+          fileBase64,
+          fileType,
+          issticker: isSticker
+        };
+
+        console.log("Sending message:", body);
+        const res = await fetch(`/message/${recipientId}`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body)
+        });
+
+        const data = await res.json();
+        if (res.ok) {
+          console.log("Message sent successfully:", data);
+          if (isSticker && data.data.fileUrl) {
+            saveSticker(data.data.fileUrl);
+          }
+          messageInput.value = "";
+          updateCharCounter();
+          clearMediaPreview();
+          replyingTo = null;
+          updateReplyPreview();
+          autoResize();
+        } else {
+          console.error("Error sending message:", data.error);
+          showCustomAlert("Error", data.error || "Failed to send message");
+        }
+      } catch (err) {
+        console.error("Error sending message:", err);
+        showCustomAlert("Error", "Error sending message");
+      } finally {
+        sendButton.disabled = false;
+        progressDiv.remove();
+      }
+    }
 
     function setupEventListeners() {
       const messageInput = document.getElementById("message-input");
@@ -660,7 +987,6 @@
       const createStickerButton = document.getElementById("create-sticker-button");
       const stickersContainer = document.getElementById("stickers-container");
       const stickersToggle = document.getElementById("stickers-toggle");
-      const charCounter = document.getElementById("char-counter");
 
       fileButton.addEventListener("click", () => {
         fileInput.click();
@@ -707,6 +1033,20 @@
       });
 
       sendButton.addEventListener("click", sendMessage);
+
+      document.getElementById("messages").addEventListener("scroll", (e) => {
+        if (e.target.scrollTop === 0 && earliestTimestamp && !isLoading) {
+          loadMessages(earliestTimestamp);
+        }
+      });
+    }
+
+    function handleTyping() {
+      socket.emit("typing", { room: `user_${recipientId}`, authToken });
+      clearTimeout(typingTimeout);
+      typingTimeout = setTimeout(() => {
+        socket.emit("stopTyping", { room: `user_${recipientId}`, authToken });
+      }, 5000);
     }
 
     function updateCharCounter() {
@@ -733,36 +1073,6 @@
       const messageInput = document.getElementById("message-input");
       messageInput.style.height = 'auto';
       messageInput.style.height = Math.min(messageInput.scrollHeight, 120) + 'px';
-    }
-
-    function handleTyping() {
-      if (!isTyping) {
-        isTyping = true;
-        // Simulate typing indicator for other users
-        showTypingIndicator([currentUser]);
-      }
-      
-      clearTimeout(typingTimeout);
-      typingTimeout = setTimeout(() => {
-        isTyping = false;
-        hideTypingIndicator();
-      }, 1000);
-    }
-
-    function showTypingIndicator(users) {
-      const typingIndicator = document.getElementById("typing-indicator");
-      const typingText = document.getElementById("typing-text");
-      
-      if (users.length > 0 && users[0].id !== currentUser.id) {
-        const names = users.map(u => (u.name || u.username) + (u.verified ? ' ✓' : '')).join(", ");
-        typingText.textContent = `${names} ${users.length > 1 ? "are" : "is"} typing...`;
-        typingIndicator.style.display = "flex";
-      }
-    }
-
-    function hideTypingIndicator() {
-      const typingIndicator = document.getElementById("typing-indicator");
-      typingIndicator.style.display = "none";
     }
 
     function loadStickers() {
@@ -799,119 +1109,41 @@
       loadStickers();
     }
 
-    function sendSticker(url) {
-      const message = {
-        id: Date.now(),
+    function saveSticker(url) {
+      const stickers = JSON.parse(localStorage.getItem("stickers") || "[]");
+      if (stickers.length >= 20) {
+        showCustomAlert("Sticker Limit", "Maximum 20 stickers allowed. Delete some stickers first.");
+        return;
+      }
+      stickers.push(url);
+      localStorage.setItem("stickers", JSON.stringify(stickers));
+      loadStickers();
+    }
+
+    async function sendSticker(url) {
+      const body = {
+        authToken,
         text: "",
-        media: url,
-        isSticker: true,
-        sender: currentUser,
-        timestamp: new Date(),
-        replyTo: replyingTo
+        fileBase64: null,
+        fileType: null,
+        issticker: true,
+        stickerUrl: url
       };
-      
-      addMessage(message);
-      document.getElementById("stickers-container").style.display = "none";
-      document.getElementById("stickers-toggle").classList.remove("active");
-      clearReply();
-    }
 
-    function sendMessage() {
-      const messageInput = document.getElementById("message-input");
-      const mediaPreview = document.getElementById("media-preview");
-      const text = messageInput.value.trim();
-      
-      if (!text && !mediaPreview.src) return;
-      
-      const message = {
-        id: Date.now(),
-        text: text,
-        media: mediaPreview.src && mediaPreview.src !== "/placeholder.svg" ? mediaPreview.src : null,
-        isSticker: isSticker,
-        sender: currentUser,
-        timestamp: new Date(),
-        replyTo: replyingTo
-      };
-      
-      if (isSticker) {
-        const stickers = JSON.parse(localStorage.getItem("stickers") || "[]");
-        if (stickers.length >= 20) {
-          alert("Maximum 20 stickers allowed. Delete some stickers first.");
-          return;
-        }
-        stickers.push(mediaPreview.src);
-        localStorage.setItem("stickers", JSON.stringify(stickers));
-        loadStickers();
-      }
-      
-      addMessage(message);
-      messageInput.value = "";
-      clearMediaPreview();
-      clearReply();
-      updateCharCounter();
-      autoResize();
-      
-      // Simulate response
-      setTimeout(() => {
-        const response = {
-          id: Date.now() + 1,
-          text: "Thanks for your message!",
-          sender: recipient,
-          timestamp: new Date()
-        };
-        addMessage(response);
-      }, 1000);
-    }
+      try {
+        const res = await fetch(`/message/${recipientId}`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body)
+        });
 
-    function addMessage(message) {
-      const messagesContainer = document.getElementById("messages");
-      const messageDiv = document.createElement("div");
-      
-      const isSent = message.sender.id === currentUser.id;
-      messageDiv.className = `message ${isSent ? 'sent' : 'received'}${message.sender.verified ? ' verified' : ''}`;
-      
-      let content = '';
-      
-      if (message.replyTo) {
-        content += `<div style="background: rgba(255,255,255,0.1); padding: 8px; border-radius: 8px; margin-bottom: 8px; font-size: 12px;">
-          Replying to: ${message.replyTo.text || 'Media'}
-        </div>`;
-      }
-      
-      if (!isSent) {
-        content += `<div class="message-header">
-          ${message.sender.name}
-          ${message.sender.verified ? '<img src="/verified.png" alt="Verified" class="verified-badge">' : ''}
-        </div>`;
-      }
-      
-      if (message.media) {
-        if (message.isSticker) {
-          messageDiv.classList.add('sticker-message');
-          content += `<img src="${message.media}" alt="Sticker">`;
-        } else {
-          const fileType = getFileType(message.media);
-          if (fileType === 'video') {
-            content += `<video controls><source src="${message.media}"></video>`;
-          } else if (fileType === 'audio') {
-            content += `<audio controls><source src="${message.media}"></audio>`;
-          } else {
-            content += `<img src="${message.media}" alt="Media">`;
-          }
+        if (res.ok) {
+          document.getElementById("stickers-container").style.display = "none";
+          document.getElementById("stickers-toggle").classList.remove("active");
         }
+      } catch (err) {
+        console.error("Error sending sticker:", err);
       }
-      
-      if (message.text) {
-        content += `<div>${message.text}</div>`;
-      }
-      
-      content += `<div class="message-time">${formatTime(message.timestamp)}</div>`;
-      
-      messageDiv.innerHTML = content;
-      messageDiv.onclick = () => replyToMessage(message);
-      
-      messagesContainer.appendChild(messageDiv);
-      messagesContainer.scrollTop = messagesContainer.scrollHeight;
     }
 
     function getFileType(src) {
@@ -926,18 +1158,26 @@
 
     function replyToMessage(message) {
       replyingTo = message;
-      const preview = document.getElementById("reply-input-preview");
-      preview.innerHTML = `
-        <span>Replying to: ${message.text || 'Media'}</span>
-        <button onclick="clearReply()">×</button>
-      `;
-      preview.style.display = "flex";
+      updateReplyPreview();
       document.getElementById("message-input").focus();
+    }
+
+    function updateReplyPreview() {
+      const preview = document.getElementById("reply-input-preview");
+      if (replyingTo) {
+        preview.innerHTML = `
+          <span>Replying to: ${replyingTo.text || 'Media'}</span>
+          <button onclick="clearReply()">×</button>
+        `;
+        preview.style.display = "flex";
+      } else {
+        preview.style.display = "none";
+      }
     }
 
     function clearReply() {
       replyingTo = null;
-      document.getElementById("reply-input-preview").style.display = "none";
+      updateReplyPreview();
     }
 
     function clearMediaPreview() {
@@ -953,30 +1193,8 @@
       isSticker = false;
     }
 
-    function loadMessages() {
-      // Sample messages for demonstration
-      const sampleMessages = [
-        {
-          id: 1,
-          text: "Hey there! How are you doing?",
-          sender: recipient,
-          timestamp: new Date(Date.now() - 300000)
-        },
-        {
-          id: 2,
-          text: "I'm doing great! Thanks for asking. How about you?",
-          sender: currentUser,
-          timestamp: new Date(Date.now() - 240000)
-        },
-        {
-          id: 3,
-          text: "That's wonderful to hear! I'm doing well too.",
-          sender: recipient,
-          timestamp: new Date(Date.now() - 180000)
-        }
-      ];
-      
-      sampleMessages.forEach(message => addMessage(message));
+    function showCustomAlert(title, message) {
+      alert(`${title}: ${message}`);
     }
   </script>
 </body>
