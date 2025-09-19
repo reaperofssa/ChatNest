@@ -7,7 +7,8 @@
     body {
       font-family: Arial, sans-serif;
       margin: 0;
-      background: #f0f2f5;
+      background: black;
+      color: white;
     }
     #chat-container {
       max-width: 600px;
@@ -16,11 +17,49 @@
       display: flex;
       flex-direction: column;
     }
-    #header {
-      background: white;
-      padding: 10px 15px;
-      border-bottom: 1px solid #ddd;
+    /* LIQUID GLASS STYLES */
+    .liquidGlass-wrapper {
+      position: relative;
       display: flex;
+      font-weight: 600;
+      overflow: hidden;
+      color: white;
+      cursor: pointer;
+      box-shadow: 0 6px 6px rgba(0, 0, 0, 0.2), 0 0 20px rgba(0, 0, 0, 0.1);
+      transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 2.2);
+      background: rgba(255, 255, 255, 0.1); /* Adjusted for dark theme */
+    }
+    .liquidGlass-effect {
+      position: absolute;
+      z-index: 0;
+      inset: 0;
+      backdrop-filter: blur(3px);
+      filter: url(#glass-distortion);
+      overflow: hidden;
+      isolation: isolate;
+    }
+    .liquidGlass-tint {
+      z-index: 1;
+      position: absolute;
+      inset: 0;
+      background: rgba(255, 255, 255, 0.1); /* Semi-transparent white for glass tint on dark bg */
+    }
+    .liquidGlass-shine {
+      position: absolute;
+      inset: 0;
+      z-index: 2;
+      overflow: hidden;
+      box-shadow: inset 2px 2px 1px 0 rgba(255, 255, 255, 0.3),
+        inset -1px -1px 1px 1px rgba(255, 255, 255, 0.3);
+    }
+    .liquidGlass-text {
+      z-index: 3;
+      position: relative;
+      width: 100%;
+    }
+    #header {
+      padding: 10px 15px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
       align-items: center;
       gap: 10px;
     }
@@ -29,17 +68,17 @@
       border: none;
       font-size: 1.2em;
       cursor: pointer;
+      color: white;
     }
     #messages {
       flex: 1;
       padding: 15px;
       overflow-y: auto;
-      background: white;
-      border: 1px solid #ddd;
+      border: 1px solid rgba(255, 255, 255, 0.1);
     }
     #no-messages {
       text-align: center;
-      color: #666;
+      color: rgba(255, 255, 255, 0.7);
       padding: 20px;
       display: none;
     }
@@ -50,24 +89,26 @@
       max-width: 70%;
       word-wrap: break-word;
       cursor: pointer;
+      background: rgba(255, 255, 255, 0.1);
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255, 255, 255, 0.2);
     }
     .sent {
-      background: #dcf8c6;
       align-self: flex-end;
     }
     .received {
-      background: #eee;
       align-self: flex-start;
     }
     .meta {
       font-size: 0.8em;
-      color: #666;
+      color: rgba(255, 255, 255, 0.7);
       margin-top: 4px;
     }
     .username {
       font-size: 0.9em;
       font-weight: bold;
       margin-bottom: 4px;
+      color: white;
     }
     .verified {
       color: #1da1f2;
@@ -90,9 +131,10 @@
     .message-text {
       white-space: pre-wrap;
       margin-top: 5px;
+      color: white;
     }
     .reply-preview {
-      background: #f5f5f5;
+      background: rgba(255, 255, 255, 0.05);
       padding: 5px 10px;
       border-radius: 4px;
       font-size: 0.9em;
@@ -101,6 +143,7 @@
       display: flex;
       align-items: center;
       gap: 5px;
+      color: white;
     }
     .reply-preview img, .reply-preview video {
       max-width: 40px;
@@ -109,21 +152,24 @@
     }
     #input-container {
       padding: 10px;
-      background: white;
-      border-top: 1px solid #ddd;
-      display: flex;
-      flex-direction: column;
+      border-top: 1px solid rgba(255, 255, 255, 0.1);
       gap: 10px;
     }
     #message-input {
       flex: 1;
       padding: 8px;
-      border: 1px solid #ddd;
+      border: 1px solid rgba(255, 255, 255, 0.2);
       border-radius: 4px;
       resize: none;
       min-height: 40px;
       max-height: 150px;
       overflow-y: auto;
+      background: rgba(255, 255, 255, 0.1);
+      color: white;
+      backdrop-filter: blur(10px);
+    }
+    #message-input::placeholder {
+      color: rgba(255, 255, 255, 0.5);
     }
     #send-button {
       padding: 8px 16px;
@@ -165,43 +211,46 @@
     #media-preview-container {
       display: none;
       padding: 5px;
-      background: #f5f5f5;
+      background: rgba(255, 255, 255, 0.1);
       border-radius: 4px;
       display: flex;
       align-items: center;
       gap: 5px;
+      backdrop-filter: blur(10px);
     }
     #media-preview-container button {
       background: none;
       border: none;
-      color: #ff0000;
+      color: white;
       cursor: pointer;
     }
     #typing-indicator {
       font-size: 0.9em;
-      color: #666;
+      color: rgba(255, 255, 255, 0.7);
       padding: 5px 15px;
     }
     #reply-input-preview {
-      background: #f5f5f5;
+      background: rgba(255, 255, 255, 0.1);
       padding: 5px 10px;
       border-radius: 4px;
       font-size: 0.9em;
       display: flex;
       justify-content: space-between;
       align-items: center;
+      color: white;
+      backdrop-filter: blur(10px);
     }
     #reply-input-preview button {
       background: none;
       border: none;
-      color: #ff0000;
+      color: white;
       cursor: pointer;
     }
     #stickers-container {
       display: none;
       position: absolute;
-      background: #f5f5f5;
-      border: 1px solid #ddd;
+      background: rgba(255, 255, 255, 0.1);
+      border: 1px solid rgba(255, 255, 255, 0.2);
       border-radius: 4px;
       padding: 10px;
       max-height: 100px;
@@ -210,6 +259,7 @@
       z-index: 100;
       width: 300px;
       box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+      backdrop-filter: blur(10px);
     }
     #stickers-container img {
       max-width: 50px;
@@ -236,32 +286,102 @@
   </style>
 </head>
 <body>
+  <svg style="display: none">
+    <filter
+      id="glass-distortion"
+      x="0%"
+      y="0%"
+      width="100%"
+      height="100%"
+      filterUnits="objectBoundingBox"
+    >
+      <feTurbulence
+        type="fractalNoise"
+        baseFrequency="0.01 0.01"
+        numOctaves="1"
+        seed="5"
+        result="turbulence"
+      />
+      <feComponentTransfer in="turbulence" result="mapped">
+        <feFuncR type="gamma" amplitude="1" exponent="10" offset="0.5" />
+        <feFuncG type="gamma" amplitude="0" exponent="1" offset="0" />
+        <feFuncB type="gamma" amplitude="0" exponent="1" offset="0.5" />
+      </feComponentTransfer>
+      <feGaussianBlur in="turbulence" stdDeviation="3" result="softMap" />
+      <feSpecularLighting
+        in="softMap"
+        surfaceScale="5"
+        specularConstant="1"
+        specularExponent="100"
+        lighting-color="white"
+        result="specLight"
+      >
+        <fePointLight x="-200" y="-200" z="300" />
+      </feSpecularLighting>
+      <feComposite
+        in="specLight"
+        operator="arithmetic"
+        k1="0"
+        k2="1"
+        k3="1"
+        k4="0"
+        result="litImage"
+      />
+      <feDisplacementMap
+        in="SourceGraphic"
+        in2="softMap"
+        scale="150"
+        xChannelSelector="R"
+        yChannelSelector="G"
+      />
+    </filter>
+  </svg>
   <div id="chat-container">
-    <div id="header">
-      <button onclick="window.location.href='/chats.html'">←</button>
-      <span id="recipient-name"></span>
-    </div>
-    <div id="messages">
-      <div id="no-messages">No messages yet. Start the conversation!</div>
-    </div>
-    <div id="typing-indicator"></div>
-    <div id="input-container">
-      <div id="reply-input-preview" style="display: none;"></div>
-      <div id="stickers-container"></div>
-      <div style="display: flex; gap: 10px; align-items: center;">
-        <button id="stickers-toggle">My Stickers</button>
-        <div style="flex: 1;"></div> <!-- Spacer -->
+    <div id="header" class="liquidGlass-wrapper">
+      <div class="liquidGlass-effect"></div>
+      <div class="liquidGlass-tint"></div>
+      <div class="liquidGlass-shine"></div>
+      <div class="liquidGlass-text">
+        <button onclick="window.location.href='/chats.html'">←</button>
+        <span id="recipient-name"></span>
       </div>
-      <div id="media-preview-container">
-        <img id="media-preview" src="" alt="Media Preview">
-        <button onclick="clearMediaPreview()">X</button>
-        <button id="create-sticker-button">Create Sticker</button>
+    </div>
+    <div id="messages" class="liquidGlass-wrapper">
+      <div class="liquidGlass-effect"></div>
+      <div class="liquidGlass-tint"></div>
+      <div class="liquidGlass-shine"></div>
+      <div class="liquidGlass-text">
+        <div id="no-messages">No messages yet. Start the conversation!</div>
       </div>
-      <div style="display: flex; gap: 10px;">
-        <textarea id="message-input" placeholder="Type a message..." rows="2"></textarea>
-        <button id="send-button">Send</button>
-        <button id="file-button">📎</button>
-        <input type="file" id="file-input" accept="image/*,video/*,audio/*">
+    </div>
+    <div id="typing-indicator" class="liquidGlass-wrapper">
+      <div class="liquidGlass-effect"></div>
+      <div class="liquidGlass-tint"></div>
+      <div class="liquidGlass-shine"></div>
+      <div class="liquidGlass-text"></div>
+    </div>
+    <div id="input-container" class="liquidGlass-wrapper">
+      <div class="liquidGlass-effect"></div>
+      <div class="liquidGlass-tint"></div>
+      <div class="liquidGlass-shine"></div>
+      <div class="liquidGlass-text">
+        <div id="reply-input-preview" style="display: none;"></div>
+        <div id="stickers-container"></div>
+        <div style="display: flex; gap: 10px; align-items: center;">
+          <button id="stickers-toggle">My Stickers</button>
+          <div style="flex: 1;"></div> <!-- Spacer -->
+        </div>
+        <div id="media-preview-container">
+          <img id="media-preview" src="" alt="Media Preview">
+          <button onclick="clearMediaPreview()">X</button>
+          <button id="create-sticker-button">Create Sticker</button>
+        </div>
+        <div style="display: flex; gap: 10px;">
+          <textarea id="message-input" placeholder="Type a message..." rows="2"></textarea>
+          <button id="send-button">Send</button>
+          <button id="file-button">📎</button>
+          <input type="file" id="file-input" accept="image/*,video/*,audio/*">
+        </div>
       </div>
     </div>
   </div>
@@ -294,6 +414,11 @@
       window.location.href = "/chats.html";
     }
 
+    // Get liquid glass text containers
+    const messagesTextContainer = document.querySelector("#messages .liquidGlass-text");
+    const typingTextContainer = document.querySelector("#typing-indicator .liquidGlass-text");
+    const inputTextContainer = document.querySelector("#input-container .liquidGlass-text");
+
     // Fetch recipient details
     async function fetchRecipient() {
       try {
@@ -301,17 +426,24 @@
         const data = await res.json();
         if (res.ok) {
           recipientData = data;
-          document.getElementById("recipient-name").innerHTML = `
-            ${escapeHtml(data.name || data.username)} 
-            ${data.verified ? '<span class="verified">[Verified]</span>' : ''}
+          document.querySelector("#header .liquidGlass-text").innerHTML = `
+            <button onclick="window.location.href='/chats.html'">←</button>
+            <span id="recipient-name">${escapeHtml(data.name || data.username)} 
+            ${data.verified ? '<span class="verified">[Verified]</span>' : ''}</span>
           `;
         } else {
           console.error("Error fetching recipient:", data.error);
-          document.getElementById("recipient-name").textContent = "Unknown User";
+          document.querySelector("#header .liquidGlass-text").innerHTML = `
+            <button onclick="window.location.href='/chats.html'">←</button>
+            <span id="recipient-name">Unknown User</span>
+          `;
         }
       } catch (err) {
         console.error("Error fetching recipient:", err);
-        document.getElementById("recipient-name").textContent = "Error";
+        document.querySelector("#header .liquidGlass-text").innerHTML = `
+          <button onclick="window.location.href='/chats.html'">←</button>
+          <span id="recipient-name">Error</span>
+        `;
       }
     }
 
@@ -374,7 +506,7 @@
     }
 
     async function renderMessages(messages, recipientId, append = true) {
-      const container = document.getElementById("messages");
+      const container = messagesTextContainer;
       const wasAtBottom = container.scrollTop + container.clientHeight >= container.scrollHeight - 10;
 
       for (const msg of messages) {
@@ -460,7 +592,7 @@
             const replyDiv = document.createElement("div");
             replyDiv.classList.add("message", "received");
             replyDiv.style.marginLeft = "30px";
-            replyDiv.style.background = "#f5f5f5";
+            replyDiv.style.background = "rgba(255, 255, 255, 0.05)";
             replyDiv.dataset.messageId = reply.id;
 
             let replyContent = `
@@ -522,28 +654,28 @@
       }
     }
 
-    // Infinite scroll
-    document.getElementById("messages").addEventListener("scroll", () => {
-      if (document.getElementById("messages").scrollTop < 50 && earliestTimestamp) {
+    // Infinite scroll - update to use messagesTextContainer
+    messagesTextContainer.addEventListener("scroll", () => {
+      if (messagesTextContainer.scrollTop < 50 && earliestTimestamp) {
         loadMessages(earliestTimestamp);
       }
     });
 
-    // WebSocket new message
+    // WebSocket new message - update to append to messagesTextContainer
     socket.on("newMessage", (msg) => {
       console.log("New message received:", msg);
       document.getElementById("no-messages").style.display = "none";
       renderMessages([msg], recipientId, true);
     });
 
-    // Typing indicator
+    // Typing indicator - update to append to typingTextContainer
     socket.on("showTyping", ({ users }) => {
-      const typingIndicator = document.getElementById("typing-indicator");
+      const typingIndicatorText = typingTextContainer;
       if (users.length > 0) {
         const names = users.map(u => (u.name || u.username) + (u.verified ? ' [Verified]' : '')).join(", ");
-        typingIndicator.textContent = `${names} ${users.length > 1 ? "are" : "is"} typing...`;
+        typingIndicatorText.textContent = `${names} ${users.length > 1 ? "are" : "is"} typing...`;
       } else {
-        typingIndicator.textContent = "";
+        typingIndicatorText.textContent = "";
       }
     });
 
@@ -712,6 +844,7 @@
             saveSticker(data.data.fileUrl);
           }
           messageInput.value = "";
+          messageInput.style.height = "auto"; // Reset height after sending
           clearMediaPreview();
           replyingTo = null;
           updateReplyPreview();
@@ -729,12 +862,11 @@
 
     sendButton.addEventListener("click", sendMessage);
     messageInput.addEventListener("keypress", (e) => {
-      if (e.key === "Enter" && !e.shiftKey) {
+      if (e.key === "Enter" && e.shiftKey) {
         e.preventDefault();
         sendMessage();
-      } else if (e.key === "Enter" && e.shiftKey) {
-        // Allow default behavior (line break)
       }
+      // Enter without Shift adds a line break (default textarea behavior)
     });
 
     // Dynamic textarea resizing
