@@ -2,8 +2,8 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1.0">
-  <title>Chat</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>Telegram Chat</title>
   <style>
     * {
       margin: 0;
@@ -13,81 +13,35 @@
 
     body {
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-      background: linear-gradient(135deg, #0a0a0a 0%, #1a0a1a 25%, #2d1b69 50%, #1a0a1a 75%, #0a0a0a 100%);
-      height: 100vh;
-      overflow: hidden;
+      background: linear-gradient(135deg, #1a1a1a 0%, #2d1b69 50%, #000000 100%);
       color: white;
+      overflow: hidden;
       position: relative;
-      /* Prevent iOS zoom on input focus */
-      -webkit-text-size-adjust: 100%;
-      -webkit-touch-callout: none;
-      -webkit-user-select: none;
-      user-select: none;
+      min-height: 100vh;
     }
 
-    /* Enhanced animated background with purple theme */
-    .background-shapes {
+    /* Toned down background animations - more professional */
+    body::before {
+      content: '';
       position: fixed;
       top: 0;
       left: 0;
       width: 100%;
       height: 100%;
-      pointer-events: none;
-      z-index: 0;
-    }
-
-    .shape {
-      position: absolute;
-      border-radius: 50%;
-      opacity: 0.15;
-      animation: float 25s infinite linear;
-    }
-
-    .shape:nth-child(1) {
-      width: 220px;
-      height: 220px;
-      background: radial-gradient(circle, #8b5cf6, transparent);
-      top: 10%;
-      left: 10%;
-      animation-delay: 0s;
-    }
-
-    .shape:nth-child(2) {
-      width: 180px;
-      height: 180px;
-      background: radial-gradient(circle, #a855f7, transparent);
-      top: 60%;
-      right: 20%;
-      animation-delay: -8s;
-    }
-
-    .shape:nth-child(3) {
-      width: 140px;
-      height: 140px;
-      background: radial-gradient(circle, #9333ea, transparent);
-      bottom: 20%;
-      left: 30%;
-      animation-delay: -16s;
-    }
-
-    .shape:nth-child(4) {
-      width: 160px;
-      height: 160px;
-      background: radial-gradient(circle, #7c3aed, transparent);
-      top: 30%;
-      right: 40%;
-      animation-delay: -24s;
+      background: 
+        radial-gradient(circle at 20% 80%, rgba(139, 92, 246, 0.1) 0%, transparent 50%),
+        radial-gradient(circle at 80% 20%, rgba(168, 85, 247, 0.08) 0%, transparent 50%),
+        radial-gradient(circle at 40% 40%, rgba(139, 92, 246, 0.05) 0%, transparent 50%);
+      animation: float 20s ease-in-out infinite;
+      z-index: -1;
     }
 
     @keyframes float {
-      0% { transform: translateY(0px) rotate(0deg) scale(1); }
-      25% { transform: translateY(-30px) rotate(90deg) scale(1.1); }
-      50% { transform: translateY(0px) rotate(180deg) scale(1); }
-      75% { transform: translateY(30px) rotate(270deg) scale(0.9); }
-      100% { transform: translateY(0px) rotate(360deg) scale(1); }
+      0%, 100% { transform: translateY(0px) rotate(0deg); }
+      50% { transform: translateY(-20px) rotate(1deg); }
     }
 
-    /* Larger, more professional chat container */
+    /* Professional chat container with subtle effects */
     #chat-container {
       width: 100vw;
       height: 100vh;
@@ -97,313 +51,317 @@
       z-index: 1;
     }
 
-    /* Enhanced header with click functionality and purple theme */
+    /* Professional header styling */
     #header {
-      background: rgba(0, 0, 0, 0.4);
-      backdrop-filter: blur(25px);
-      -webkit-backdrop-filter: blur(25px);
-      border-bottom: 1px solid rgba(139, 92, 246, 0.3);
-      padding: 24px 28px;
+      background: rgba(0, 0, 0, 0.6);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border-bottom: 1px solid rgba(139, 92, 246, 0.2);
+      padding: 20px 24px;
       display: flex;
       align-items: center;
-      gap: 20px;
-      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+      gap: 16px;
       cursor: pointer;
       transition: all 0.3s ease;
     }
 
     #header:hover {
-      background: rgba(0, 0, 0, 0.5);
-      border-bottom-color: rgba(139, 92, 246, 0.5);
+      background: rgba(0, 0, 0, 0.7);
+      border-bottom-color: rgba(139, 92, 246, 0.3);
     }
 
     #header button {
-      background: rgba(139, 92, 246, 0.2);
-      border: 1px solid rgba(139, 92, 246, 0.4);
-      color: #a855f7;
-      font-size: 20px;
+      background: none;
+      border: none;
+      color: white;
+      font-size: 18px;
       cursor: pointer;
-      padding: 14px 18px;
-      border-radius: 14px;
-      backdrop-filter: blur(10px);
-      transition: all 0.3s ease;
+      padding: 8px;
+      border-radius: 8px;
+      transition: background 0.3s ease;
     }
 
     #header button:hover {
-      background: rgba(139, 92, 246, 0.3);
-      transform: translateY(-2px);
-      box-shadow: 0 4px 15px rgba(139, 92, 246, 0.3);
+      background: rgba(255, 255, 255, 0.1);
     }
 
-    #recipient-name {
-      color: #ffffff;
-      font-size: 22px;
-      font-weight: 600;
-      text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
-    }
-
-    /* Larger messages container with better scrolling */
-    #messages {
+    #header .user-info {
       flex: 1;
-      padding: 28px;
-      overflow-y: auto;
-      background: rgba(0, 0, 0, 0.15);
-      backdrop-filter: blur(20px);
-      -webkit-backdrop-filter: blur(20px);
-      scrollbar-width: thin;
-      scrollbar-color: rgba(139, 92, 246, 0.4) transparent;
-    }
-
-    #messages::-webkit-scrollbar {
-      width: 8px;
-    }
-
-    #messages::-webkit-scrollbar-track {
-      background: transparent;
-    }
-
-    #messages::-webkit-scrollbar-thumb {
-      background: rgba(139, 92, 246, 0.4);
-      border-radius: 4px;
-    }
-
-    #no-messages {
-      text-align: center;
-      color: rgba(255, 255, 255, 0.7);
-      padding: 50px;
-      font-size: 20px;
-      display: none;
-    }
-
-    /* Enhanced message bubbles with better borders and larger size */
-    .message {
-      margin-bottom: 20px;
-      padding: 18px 24px;
-      border-radius: 24px;
-      max-width: 80%;
-      word-wrap: break-word;
-      cursor: pointer;
-      backdrop-filter: blur(25px);
-      -webkit-backdrop-filter: blur(25px);
-      border: 1px solid rgba(255, 255, 255, 0.15);
-      transition: all 0.3s ease;
-      position: relative;
-      overflow: hidden;
-      font-size: 16px;
-      line-height: 1.6;
-    }
-
-    .message::before {
-      content: '';
-      position: absolute;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      background: linear-gradient(45deg, rgba(139, 92, 246, 0.1), rgba(168, 85, 247, 0.1));
-      opacity: 0;
-      transition: opacity 0.3s ease;
-      pointer-events: none;
-    }
-
-    .message:hover::before {
-      opacity: 1;
-    }
-
-    .message:hover {
-      transform: translateY(-3px);
-      box-shadow: 0 12px 40px rgba(139, 92, 246, 0.25);
-    }
-
-    .sent {
-      background: rgba(139, 92, 246, 0.2);
-      align-self: flex-end;
-      margin-left: auto;
-      border: 2px solid rgba(139, 92, 246, 0.4);
-      box-shadow: 0 4px 20px rgba(139, 92, 246, 0.2);
-    }
-
-    .received {
-      background: rgba(255, 255, 255, 0.08);
-      align-self: flex-start;
-      border: 2px solid rgba(255, 255, 255, 0.15);
-      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
-    }
-
-    /* Premium verified user styling with custom borders */
-    .verified-message {
-      border: 3px solid rgba(139, 92, 246, 0.7) !important;
-      background: rgba(139, 92, 246, 0.15) !important;
-      box-shadow: 0 0 30px rgba(139, 92, 246, 0.4), inset 0 0 20px rgba(139, 92, 246, 0.1);
-      position: relative;
-    }
-
-    .verified-message::after {
-      content: '';
-      position: absolute;
-      top: -3px;
-      left: -3px;
-      right: -3px;
-      bottom: -3px;
-      background: linear-gradient(45deg, #8b5cf6, #a855f7, #9333ea, #7c3aed);
-      border-radius: 27px;
-      z-index: -1;
-      opacity: 0.4;
-      animation: shimmer 3s infinite;
-    }
-
-    @keyframes shimmer {
-      0% { background-position: -200% 0; }
-      100% { background-position: 200% 0; }
-    }
-
-    .message-text {
-      color: #ffffff;
-      white-space: pre-wrap;
-      margin-top: 8px;
-      line-height: 1.6;
-      font-size: 16px;
-    }
-
-    .meta {
-      font-size: 13px;
-      color: rgba(255, 255, 255, 0.7);
-      margin-top: 10px;
-    }
-
-    .username {
-      font-size: 15px;
-      font-weight: 600;
-      margin-bottom: 10px;
-      color: #ffffff;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-
-    /* Custom verified icon using /verified.png */
-    .verified-icon {
-      width: 24px;
-      height: 24px;
-      background-image: url('/verified.png');
-      background-size: contain;
-      background-repeat: no-repeat;
-      background-position: center;
-      display: inline-block;
-      filter: drop-shadow(0 2px 4px rgba(139, 92, 246, 0.5));
-    }
-
-    /* Enhanced media display for images, videos, and audio */
-    img, video {
-      max-width: 100%;
-      border-radius: 16px;
-      margin-top: 12px;
-      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
-    }
-
-    .sticker {
-      max-width: 140px;
-      max-height: 140px;
-      border-radius: 20px;
-    }
-
-    audio {
-      width: 100%;
-      margin-top: 12px;
-      border-radius: 12px;
-      background: rgba(0, 0, 0, 0.3);
-      backdrop-filter: blur(10px);
-    }
-
-    .reply-preview {
-      background: rgba(0, 0, 0, 0.4);
-      padding: 14px 18px;
-      border-radius: 14px;
-      font-size: 15px;
-      margin-bottom: 10px;
-      border-left: 4px solid #8b5cf6;
       display: flex;
       align-items: center;
       gap: 12px;
     }
 
-    .reply-preview button {
-      background: rgba(139, 92, 246, 0.3);
-      border: none;
-      color: #ffffff;
-      padding: 6px 10px;
-      border-radius: 8px;
-      cursor: pointer;
-      font-size: 12px;
+    #header .user-info img {
+      width: 42px;
+      height: 42px;
+      border-radius: 50%;
+      border: 2px solid rgba(139, 92, 246, 0.3);
     }
 
-    /* Enhanced input container with better styling */
-    #input-container {
-      background: rgba(0, 0, 0, 0.4);
-      backdrop-filter: blur(25px);
-      -webkit-backdrop-filter: blur(25px);
-      border-top: 1px solid rgba(139, 92, 246, 0.3);
-      padding: 24px 28px;
+    #header .user-details h3 {
+      font-size: 17px;
+      font-weight: 600;
+      margin-bottom: 2px;
+    }
+
+    #header .user-details p {
+      font-size: 13px;
+      color: rgba(255, 255, 255, 0.7);
+    }
+
+    #messages {
+      flex: 1;
+      overflow-y: auto;
+      padding: 20px;
       display: flex;
       flex-direction: column;
-      gap: 16px;
-      box-shadow: 0 -8px 32px rgba(0, 0, 0, 0.4);
+      gap: 12px;
+    }
+
+    /* Professional message bubbles */
+    .message {
+      max-width: 70%;
+      padding: 12px 16px;
+      border-radius: 18px;
+      font-size: 15px;
+      line-height: 1.4;
+      word-wrap: break-word;
+      position: relative;
+      backdrop-filter: blur(10px);
+    }
+
+    .message.sent {
+      align-self: flex-end;
+      background: rgba(139, 92, 246, 0.8);
+      color: white;
+      border-bottom-right-radius: 6px;
+    }
+
+    .message.received {
+      align-self: flex-start;
+      background: rgba(255, 255, 255, 0.1);
+      color: white;
+      border-bottom-left-radius: 6px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    /* Enhanced verified user message styling */
+    .message.verified {
+      border: 2px solid rgba(139, 92, 246, 0.4);
+      box-shadow: 0 4px 15px rgba(139, 92, 246, 0.2);
+    }
+
+    .message.verified::before {
+      content: '';
+      position: absolute;
+      top: -1px;
+      left: -1px;
+      right: -1px;
+      bottom: -1px;
+      background: linear-gradient(45deg, rgba(139, 92, 246, 0.3), rgba(168, 85, 247, 0.3));
+      border-radius: 18px;
+      z-index: -1;
+    }
+
+    .message-header {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-bottom: 4px;
+      font-size: 13px;
+      font-weight: 600;
+    }
+
+    .verified-badge {
+      width: 16px;
+      height: 16px;
+    }
+
+    .message-time {
+      font-size: 11px;
+      color: rgba(255, 255, 255, 0.6);
+      margin-top: 4px;
+    }
+
+    .message img, .message video, .message audio {
+      max-width: 100%;
+      border-radius: 12px;
+      margin-top: 8px;
+    }
+
+    .message video {
+      max-height: 300px;
+    }
+
+    .message audio {
+      width: 100%;
+      margin-top: 8px;
+    }
+
+    .sticker-message {
+      background: none !important;
+      border: none !important;
+      padding: 4px !important;
+    }
+
+    .sticker-message img {
+      max-width: 120px;
+      max-height: 120px;
+      margin: 0;
+    }
+
+    /* Compact and organized input container */
+    #input-container {
+      background: rgba(0, 0, 0, 0.6);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border-top: 1px solid rgba(139, 92, 246, 0.2);
+      padding: 16px 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      position: relative;
+    }
+
+    /* Fixed stickers container positioning */
+    #stickers-container {
+      display: none;
+      position: absolute;
+      background: rgba(0, 0, 0, 0.9);
+      border: 1px solid rgba(139, 92, 246, 0.3);
+      border-radius: 16px;
+      padding: 16px;
+      max-height: 140px;
+      overflow-x: auto;
+      white-space: nowrap;
+      z-index: 100;
+      width: 350px;
+      backdrop-filter: blur(20px);
+      bottom: 100%;
+      left: 0;
+      margin-bottom: 8px;
+      box-shadow: 0 8px 25px rgba(0, 0, 0, 0.4);
+    }
+
+    .sticker-item {
+      position: relative;
+      display: inline-block;
+      margin-right: 8px;
+    }
+
+    #stickers-container img {
+      max-width: 60px;
+      max-height: 60px;
+      cursor: pointer;
+      display: inline-block;
+      border-radius: 8px;
+      transition: all 0.2s ease;
+      border: 1px solid transparent;
+    }
+
+    #stickers-container img:hover {
+      transform: scale(1.1);
+      border-color: rgba(139, 92, 246, 0.5);
+    }
+
+    .delete-sticker {
+      position: absolute;
+      top: -6px;
+      right: -6px;
+      background: #ef4444;
+      color: white;
+      border: none;
+      border-radius: 50%;
+      width: 20px;
+      height: 20px;
+      font-size: 12px;
+      cursor: pointer;
+      display: none;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .sticker-item:hover .delete-sticker {
+      display: flex;
+    }
+
+    /* Compact input row layout */
+    .input-row {
+      display: flex;
+      gap: 12px;
+      align-items: flex-end;
+    }
+
+    .input-wrapper {
+      flex: 1;
+      position: relative;
     }
 
     #message-input {
-      flex: 1;
-      padding: 18px 24px;
+      width: 100%;
+      padding: 12px 16px;
       background: rgba(255, 255, 255, 0.1);
-      border: 2px solid rgba(139, 92, 246, 0.3);
-      border-radius: 18px;
+      border: 1px solid rgba(139, 92, 246, 0.2);
+      border-radius: 16px;
+      resize: none;
+      min-height: 44px;
+      max-height: 120px;
+      overflow-y: auto;
       color: white;
       font-size: 16px;
-      backdrop-filter: blur(15px);
+      backdrop-filter: blur(10px);
       transition: all 0.3s ease;
-      /* Prevent iOS zoom */
-      font-size: 16px !important;
+      font-size: 16px !important; /* Prevent iOS zoom */
       -webkit-appearance: none;
     }
 
     #message-input:focus {
       outline: none;
-      border-color: rgba(139, 92, 246, 0.6);
+      border-color: rgba(139, 92, 246, 0.4);
       background: rgba(255, 255, 255, 0.15);
-      box-shadow: 0 0 20px rgba(139, 92, 246, 0.3);
     }
 
     #message-input::placeholder {
-      color: rgba(255, 255, 255, 0.6);
+      color: rgba(255, 255, 255, 0.5);
     }
 
     .char-counter {
-      font-size: 13px;
-      color: rgba(255, 255, 255, 0.6);
+      font-size: 11px;
+      color: rgba(255, 255, 255, 0.5);
       text-align: right;
-      margin-top: 6px;
+      margin-top: 4px;
+      position: absolute;
+      right: 8px;
+      bottom: -18px;
+    }
+
+    .char-counter.warning {
+      color: #f59e0b;
     }
 
     .char-counter.error {
       color: #ef4444;
     }
 
+    /* Professional button styling */
     #send-button {
-      padding: 18px 28px;
+      padding: 12px 20px;
       background: linear-gradient(135deg, #8b5cf6, #a855f7);
       color: white;
       border: none;
-      border-radius: 18px;
+      border-radius: 16px;
       cursor: pointer;
-      font-size: 17px;
+      font-size: 15px;
       font-weight: 600;
       transition: all 0.3s ease;
-      min-width: 120px;
-      box-shadow: 0 4px 15px rgba(139, 92, 246, 0.3);
+      min-width: 80px;
+      height: 44px;
     }
 
     #send-button:hover:not(:disabled) {
-      transform: translateY(-3px);
-      box-shadow: 0 8px 30px rgba(139, 92, 246, 0.5);
+      transform: translateY(-1px);
+      box-shadow: 0 4px 15px rgba(139, 92, 246, 0.3);
     }
 
     #send-button:disabled {
@@ -413,219 +371,152 @@
       box-shadow: none;
     }
 
-    #file-input {
-      display: none;
-    }
-
     #file-button {
-      padding: 18px 22px;
+      padding: 12px;
       background: rgba(139, 92, 246, 0.2);
-      color: #a855f7;
-      border: 2px solid rgba(139, 92, 246, 0.4);
-      border-radius: 18px;
+      color: #8b5cf6;
+      border: 1px solid rgba(139, 92, 246, 0.3);
+      border-radius: 16px;
       cursor: pointer;
-      font-size: 22px;
+      font-size: 16px;
       transition: all 0.3s ease;
-      backdrop-filter: blur(15px);
+      width: 44px;
+      height: 44px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
     }
 
     #file-button:hover {
       background: rgba(139, 92, 246, 0.3);
-      transform: translateY(-2px);
-      box-shadow: 0 4px 15px rgba(139, 92, 246, 0.3);
-    }
-
-    /* Telegram-style sticker button */
-    #create-sticker-button {
-      padding: 14px 20px;
-      background: linear-gradient(135deg, #f59e0b, #d97706);
-      color: white;
-      border: none;
-      border-radius: 14px;
-      cursor: pointer;
-      font-size: 15px;
-      font-weight: 600;
-      transition: all 0.3s ease;
-      box-shadow: 0 3px 12px rgba(245, 158, 11, 0.3);
-    }
-
-    #create-sticker-button:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 6px 20px rgba(245, 158, 11, 0.5);
-    }
-
-    #media-preview {
-      max-width: 140px;
-      max-height: 140px;
-      border-radius: 16px;
-      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
-    }
-
-    #media-preview-container {
-      display: none;
-      align-items: center;
-      gap: 16px;
-      padding: 16px;
-      background: rgba(0, 0, 0, 0.3);
-      border-radius: 16px;
-      backdrop-filter: blur(15px);
-    }
-
-    #media-preview-container button {
-      padding: 10px 14px;
-      background: rgba(239, 68, 68, 0.8);
-      color: white;
-      border: none;
-      border-radius: 10px;
-      cursor: pointer;
-      font-size: 14px;
-      transition: all 0.3s ease;
-    }
-
-    #media-preview-container button:hover {
-      background: rgba(239, 68, 68, 1);
       transform: translateY(-1px);
     }
 
-    /* Enhanced stickers container with delete functionality */
-    #stickers-container {
+    #file-input {
       display: none;
-      position: absolute;
-      background: rgba(0, 0, 0, 0.85);
-      border: 2px solid rgba(139, 92, 246, 0.4);
-      border-radius: 20px;
-      padding: 20px;
-      max-height: 160px;
-      overflow-x: auto;
-      white-space: nowrap;
-      z-index: 100;
-      width: 400px;
-      box-shadow: 0 12px 40px rgba(0, 0, 0, 0.6);
-      backdrop-filter: blur(25px);
-      bottom: 100%;
-      margin-bottom: 12px;
     }
 
-    .sticker-item {
-      position: relative;
-      display: inline-block;
-      margin-right: 12px;
-    }
-
-    #stickers-container img {
-      max-width: 70px;
-      max-height: 70px;
-      cursor: pointer;
-      display: inline-block;
-      border-radius: 12px;
-      transition: all 0.3s ease;
-      border: 2px solid transparent;
-    }
-
-    #stickers-container img:hover {
-      transform: scale(1.15);
-      box-shadow: 0 6px 20px rgba(139, 92, 246, 0.4);
-      border-color: rgba(139, 92, 246, 0.5);
-    }
-
-    .delete-sticker {
-      position: absolute;
-      top: -8px;
-      right: -8px;
-      background: rgba(239, 68, 68, 0.9);
-      color: white;
-      border: none;
-      border-radius: 50%;
-      width: 24px;
-      height: 24px;
-      font-size: 12px;
-      cursor: pointer;
-      display: none;
-      align-items: center;
-      justify-content: center;
-      transition: all 0.3s ease;
-    }
-
-    .sticker-item:hover .delete-sticker {
-      display: flex;
-    }
-
-    .delete-sticker:hover {
-      background: rgba(239, 68, 68, 1);
-      transform: scale(1.1);
-    }
-
-    /* Telegram-style stickers toggle button */
+    /* Professional stickers toggle button */
     #stickers-toggle {
-      padding: 16px 22px;
-      background: linear-gradient(135deg, rgba(139, 92, 246, 0.2), rgba(168, 85, 247, 0.2));
+      padding: 12px 16px;
+      background: rgba(139, 92, 246, 0.15);
       color: #ffffff;
-      border: 2px solid rgba(139, 92, 246, 0.4);
+      border: 1px solid rgba(139, 92, 246, 0.3);
       border-radius: 16px;
       cursor: pointer;
-      font-size: 16px;
-      font-weight: 600;
+      font-size: 14px;
+      font-weight: 500;
       position: relative;
-      backdrop-filter: blur(15px);
+      backdrop-filter: blur(10px);
       transition: all 0.3s ease;
-      box-shadow: 0 4px 15px rgba(139, 92, 246, 0.2);
+      height: 44px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
     }
 
     #stickers-toggle:hover {
-      background: linear-gradient(135deg, rgba(139, 92, 246, 0.3), rgba(168, 85, 247, 0.3));
-      transform: translateY(-2px);
-      box-shadow: 0 6px 20px rgba(139, 92, 246, 0.3);
+      background: rgba(139, 92, 246, 0.25);
+      transform: translateY(-1px);
     }
 
     #stickers-toggle::after {
       content: '🎭';
-      margin-left: 10px;
-      font-size: 16px;
+      font-size: 14px;
       transition: transform 0.3s ease;
     }
 
     #stickers-toggle.active {
-      background: linear-gradient(135deg, rgba(139, 92, 246, 0.4), rgba(168, 85, 247, 0.4));
-      border-color: rgba(139, 92, 246, 0.6);
+      background: rgba(139, 92, 246, 0.3);
+      border-color: rgba(139, 92, 246, 0.5);
     }
 
     #stickers-toggle.active::after {
       transform: rotate(180deg);
     }
 
-    .loading-spinner {
-      display: inline-block;
+    #media-preview-container {
+      display: none;
+      position: relative;
+      margin-bottom: 12px;
+    }
+
+    #media-preview {
+      max-width: 200px;
+      max-height: 200px;
+      border-radius: 12px;
+      border: 1px solid rgba(139, 92, 246, 0.3);
+    }
+
+    #media-preview-container button {
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      background: rgba(0, 0, 0, 0.7);
+      color: white;
+      border: none;
+      border-radius: 50%;
       width: 24px;
       height: 24px;
-      border: 3px solid rgba(139, 92, 246, 0.3);
-      border-radius: 50%;
-      border-top-color: #8b5cf6;
-      animation: spin 1s ease-in-out infinite;
+      cursor: pointer;
+      font-size: 12px;
     }
 
-    @keyframes spin {
-      to { transform: rotate(360deg); }
+    #create-sticker-button {
+      position: absolute;
+      bottom: 8px;
+      left: 8px;
+      background: rgba(139, 92, 246, 0.8);
+      color: white;
+      border: none;
+      border-radius: 8px;
+      padding: 4px 8px;
+      font-size: 12px;
+      cursor: pointer;
     }
 
-    .typing-indicator {
+    #reply-input-preview {
+      background: rgba(0, 0, 0, 0.4);
+      padding: 8px 12px;
+      border-radius: 12px;
+      font-size: 13px;
+      display: none;
+      justify-content: space-between;
+      align-items: center;
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(139, 92, 246, 0.2);
+      color: #ffffff;
+      margin-bottom: 8px;
+    }
+
+    #reply-input-preview button {
+      background: none;
+      border: none;
+      color: rgba(255, 255, 255, 0.7);
+      cursor: pointer;
+      font-size: 16px;
+    }
+
+    /* Professional typing indicator */
+    #typing-indicator {
+      font-size: 13px;
+      color: rgba(255, 255, 255, 0.6);
+      padding: 8px 20px;
+      background: rgba(0, 0, 0, 0.3);
+      backdrop-filter: blur(10px);
       display: flex;
       align-items: center;
       gap: 8px;
-      padding: 16px 28px;
-      color: rgba(255, 255, 255, 0.7);
-      font-style: italic;
-      background: rgba(0, 0, 0, 0.2);
-      backdrop-filter: blur(10px);
     }
 
     .typing-dots {
       display: flex;
-      gap: 4px;
+      gap: 3px;
     }
 
     .typing-dots span {
-      width: 8px;
-      height: 8px;
+      width: 6px;
+      height: 6px;
       background: #8b5cf6;
       border-radius: 50%;
       animation: typing 1.4s infinite ease-in-out;
@@ -639,354 +530,422 @@
       40% { transform: scale(1); opacity: 1; }
     }
 
-    /* Mobile responsiveness improvements */
+    /* Mobile responsiveness */
     @media (max-width: 768px) {
       #header {
-        padding: 20px 20px;
+        padding: 16px 16px;
       }
       
       #messages {
-        padding: 20px;
+        padding: 16px;
       }
       
       #input-container {
-        padding: 20px;
+        padding: 12px 16px;
       }
       
       .message {
         max-width: 85%;
-        padding: 16px 20px;
+        font-size: 14px;
       }
       
       #stickers-container {
-        width: 90vw;
-        left: 5vw;
+        width: calc(100vw - 32px);
       }
     }
 
-    /* Prevent text selection on UI elements */
-    button, .message, #header {
-      -webkit-user-select: none;
-      user-select: none;
+    /* Professional scrollbar */
+    ::-webkit-scrollbar {
+      width: 6px;
     }
 
-    /* Allow text selection in message content */
-    .message-text {
-      -webkit-user-select: text;
-      user-select: text;
+    ::-webkit-scrollbar-track {
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 3px;
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: rgba(139, 92, 246, 0.5);
+      border-radius: 3px;
+    }
+
+    ::-webkit-scrollbar-thumb:hover {
+      background: rgba(139, 92, 246, 0.7);
     }
   </style>
 </head>
 <body>
-  <div class="background-shapes">
-    <div class="shape"></div>
-    <div class="shape"></div>
-    <div class="shape"></div>
-    <div class="shape"></div>
-  </div>
-
   <div id="chat-container">
     <!-- Clickable header for navigation -->
-    <div id="header" onclick="navigateToInfo()">
-      <button onclick="event.stopPropagation(); window.location.href='/chats.html'">←</button>
-      <span id="recipient-name"></span>
-    </div>
-    <div id="messages">
-      <div id="no-messages">No messages yet. Start the conversation!</div>
-    </div>
-    <div id="typing-indicator"></div>
-    <div id="input-container">
-      <div id="reply-input-preview" style="display: none;"></div>
-      <div id="stickers-container"></div>
-      <div style="display: flex; gap: 16px; align-items: center;">
-        <button id="stickers-toggle">My Stickers</button>
-        <div style="flex: 1;"></div>
+    <div id="header" onclick="window.location.href = '/info/' + recipientId">
+      <button onclick="event.stopPropagation(); window.history.back()">←</button>
+      <div class="user-info">
+        <img src="/placeholder.svg?height=42&width=42" alt="User Avatar">
+        <div class="user-details">
+          <h3 id="recipient-name">John Doe</h3>
+          <p id="recipient-status">Online</p>
+        </div>
       </div>
+      <button onclick="event.stopPropagation()">📞</button>
+      <button onclick="event.stopPropagation()">📹</button>
+      <button onclick="event.stopPropagation()">⋮</button>
+    </div>
+
+    <div id="messages">
+      <!-- Messages will be populated here -->
+    </div>
+
+    <div id="typing-indicator" style="display: none;">
+      <div class="typing-dots">
+        <span></span>
+        <span></span>
+        <span></span>
+      </div>
+      <span id="typing-text"></span>
+    </div>
+
+    <!-- Reorganized and compact input container -->
+    <div id="input-container">
+      <div id="reply-input-preview"></div>
+      
       <div id="media-preview-container">
         <img id="media-preview" src="/placeholder.svg" alt="Media Preview">
         <button onclick="clearMediaPreview()">✕</button>
         <button id="create-sticker-button">Create Sticker</button>
       </div>
-      <div style="display: flex; gap: 16px; align-items: flex-end;">
-        <button id="file-button">📎</button>
-        <div style="flex: 1;">
-          <textarea id="message-input" placeholder="Type a message..." rows="1"></textarea>
-          <div id="char-counter">0/1000</div>
-        </div>
-        <button id="send-button">Send</button>
+
+      <div id="stickers-container"></div>
+      
+      <div style="display: flex; gap: 12px; align-items: center; margin-bottom: 8px;">
+        <button id="stickers-toggle">My Stickers</button>
+        <div style="flex: 1;"></div>
       </div>
-      <input type="file" id="file-input" accept="image/*,video/*,audio/*">
+
+      <div class="input-row">
+        <div class="input-wrapper">
+          <textarea id="message-input" placeholder="Type a message..." rows="1"></textarea>
+          <div class="char-counter" id="char-counter">0/1000</div>
+        </div>
+        <button id="file-button">📎</button>
+        <button id="send-button">Send</button>
+        <input type="file" id="file-input" accept="image/*,video/*,audio/*">
+      </div>
     </div>
   </div>
 
   <script>
-    let currentRecipientId = null;
-    let replyingTo = null;
+    let currentUser = { id: 1, name: "You", verified: true };
+    let recipientId = 2;
+    let recipient = { id: 2, name: "John Doe", verified: false };
     let isSticker = false;
-    let userStickers = JSON.parse(localStorage.getItem('userStickers') || '[]');
-    const MAX_STICKERS = 20; // Sticker limit per user
+    let replyingTo = null;
+    let typingTimeout;
+    let isTyping = false;
 
-    function navigateToInfo() {
-      if (currentRecipientId) {
-        window.location.href = `/info/${currentRecipientId}`;
-      }
-    }
-
-    // Get recipient ID from URL
-    const urlParams = new URLSearchParams(window.location.search);
-    currentRecipientId = urlParams.get('recipient');
-    
-    if (currentRecipientId) {
-      document.getElementById('recipient-name').textContent = `Chat with ${currentRecipientId}`;
+    // Initialize
+    document.addEventListener('DOMContentLoaded', function() {
+      loadStickers();
+      setupEventListeners();
       loadMessages();
-      loadUserStickers();
-    }
+      updateCharCounter();
+    });
 
-    function loadMessages() {
-      const messages = JSON.parse(localStorage.getItem(`messages_${currentRecipientId}`) || '[]');
-      const messagesContainer = document.getElementById('messages');
-      const noMessages = document.getElementById('no-messages');
-      
-      if (messages.length === 0) {
-        noMessages.style.display = 'block';
-        return;
-      }
-      
-      noMessages.style.display = 'none';
-      messagesContainer.innerHTML = '';
-      
-      messages.forEach(message => {
-        const messageDiv = document.createElement('div');
-        messageDiv.className = `message ${message.type}`;
-        
-        if (message.isVerified) {
-          messageDiv.classList.add('verified-message');
-        }
-        
-        let mediaContent = '';
-        if (message.media) {
-          if (message.media.type === 'image') {
-            const stickerClass = message.isSticker ? 'sticker' : '';
-            mediaContent = `<img src="${message.media.url}" alt="Image" class="${stickerClass}">`;
-          } else if (message.media.type === 'video') {
-            mediaContent = `<video controls><source src="${message.media.url}" type="video/mp4">Your browser does not support video.</video>`;
-          } else if (message.media.type === 'audio') {
-            mediaContent = `<audio controls><source src="${message.media.url}" type="audio/mpeg">Your browser does not support audio.</audio>`;
-          }
-        }
-        
-        const verifiedIcon = message.isVerified ? '<span class="verified-icon"></span>' : '';
-        
-        messageDiv.innerHTML = `
-          <div class="username">${message.sender} ${verifiedIcon}</div>
-          ${message.replyTo ? `<div class="reply-preview">Replying to: ${message.replyTo}</div>` : ''}
-          ${mediaContent}
-          ${message.text ? `<div class="message-text">${message.text}</div>` : ''}
-          <div class="meta">${new Date(message.timestamp).toLocaleTimeString()}</div>
-        `;
-        
-        messageDiv.addEventListener('click', () => replyToMessage(message));
-        messagesContainer.appendChild(messageDiv);
+    function setupEventListeners() {
+      const messageInput = document.getElementById("message-input");
+      const sendButton = document.getElementById("send-button");
+      const fileInput = document.getElementById("file-input");
+      const fileButton = document.getElementById("file-button");
+      const mediaPreview = document.getElementById("media-preview");
+      const mediaPreviewContainer = document.getElementById("media-preview-container");
+      const createStickerButton = document.getElementById("create-sticker-button");
+      const stickersContainer = document.getElementById("stickers-container");
+      const stickersToggle = document.getElementById("stickers-toggle");
+      const charCounter = document.getElementById("char-counter");
+
+      fileButton.addEventListener("click", () => {
+        fileInput.click();
       });
-      
-      messagesContainer.scrollTop = messagesContainer.scrollHeight;
+
+      fileInput.addEventListener("change", () => {
+        const file = fileInput.files[0];
+        if (file) {
+          const reader = new FileReader();
+          reader.onload = () => {
+            mediaPreview.src = reader.result;
+            mediaPreviewContainer.style.display = "flex";
+            isSticker = false;
+            createStickerButton.style.display = file.type.startsWith("image") ? "inline-block" : "none";
+          };
+          reader.readAsDataURL(file);
+        } else {
+          clearMediaPreview();
+        }
+      });
+
+      createStickerButton.addEventListener("click", () => {
+        isSticker = true;
+        createStickerButton.style.display = "none";
+      });
+
+      stickersToggle.addEventListener("click", () => {
+        const isVisible = stickersContainer.style.display === "block";
+        stickersContainer.style.display = isVisible ? "none" : "block";
+        stickersToggle.classList.toggle("active", !isVisible);
+      });
+
+      messageInput.addEventListener("input", () => {
+        updateCharCounter();
+        autoResize();
+        handleTyping();
+      });
+
+      messageInput.addEventListener("keypress", (e) => {
+        if (e.key === "Enter" && !e.shiftKey) {
+          e.preventDefault();
+          sendMessage();
+        }
+      });
+
+      sendButton.addEventListener("click", sendMessage);
     }
 
-    function loadUserStickers() {
-      const stickersContainer = document.getElementById('stickers-container');
-      stickersContainer.innerHTML = '';
+    function updateCharCounter() {
+      const messageInput = document.getElementById("message-input");
+      const charCounter = document.getElementById("char-counter");
+      const sendButton = document.getElementById("send-button");
+      const length = messageInput.value.length;
       
-      if (userStickers.length === 0) {
-        stickersContainer.innerHTML = '<p style="color: rgba(255,255,255,0.6); text-align: center;">No stickers yet. Create some!</p>';
-        return;
+      charCounter.textContent = `${length}/1000`;
+      charCounter.className = 'char-counter';
+      
+      if (length > 800) {
+        charCounter.classList.add('warning');
+      }
+      if (length > 1000) {
+        charCounter.classList.add('error');
+        sendButton.disabled = true;
+      } else {
+        sendButton.disabled = false;
+      }
+    }
+
+    function autoResize() {
+      const messageInput = document.getElementById("message-input");
+      messageInput.style.height = 'auto';
+      messageInput.style.height = Math.min(messageInput.scrollHeight, 120) + 'px';
+    }
+
+    function handleTyping() {
+      if (!isTyping) {
+        isTyping = true;
+        // Simulate typing indicator for other users
+        showTypingIndicator([currentUser]);
       }
       
-      userStickers.forEach((sticker, index) => {
-        const stickerDiv = document.createElement('div');
-        stickerDiv.className = 'sticker-item';
-        stickerDiv.innerHTML = `
-          <img src="${sticker}" onclick="sendSticker('${sticker}')" alt="Sticker">
-          <button class="delete-sticker" onclick="deleteSticker(${index})">×</button>
-        `;
-        stickersContainer.appendChild(stickerDiv);
+      clearTimeout(typingTimeout);
+      typingTimeout = setTimeout(() => {
+        isTyping = false;
+        hideTypingIndicator();
+      }, 1000);
+    }
+
+    function showTypingIndicator(users) {
+      const typingIndicator = document.getElementById("typing-indicator");
+      const typingText = document.getElementById("typing-text");
+      
+      if (users.length > 0 && users[0].id !== currentUser.id) {
+        const names = users.map(u => (u.name || u.username) + (u.verified ? ' ✓' : '')).join(", ");
+        typingText.textContent = `${names} ${users.length > 1 ? "are" : "is"} typing...`;
+        typingIndicator.style.display = "flex";
+      }
+    }
+
+    function hideTypingIndicator() {
+      const typingIndicator = document.getElementById("typing-indicator");
+      typingIndicator.style.display = "none";
+    }
+
+    function loadStickers() {
+      const stickers = JSON.parse(localStorage.getItem("stickers") || "[]");
+      const container = document.getElementById("stickers-container");
+      container.innerHTML = "";
+      
+      stickers.slice(0, 20).forEach((url, index) => {
+        const stickerItem = document.createElement("div");
+        stickerItem.className = "sticker-item";
+        
+        const img = document.createElement("img");
+        img.src = url;
+        img.onclick = () => sendSticker(url);
+        
+        const deleteBtn = document.createElement("button");
+        deleteBtn.className = "delete-sticker";
+        deleteBtn.innerHTML = "×";
+        deleteBtn.onclick = (e) => {
+          e.stopPropagation();
+          deleteSticker(index);
+        };
+        
+        stickerItem.appendChild(img);
+        stickerItem.appendChild(deleteBtn);
+        container.appendChild(stickerItem);
       });
     }
 
     function deleteSticker(index) {
-      if (confirm('Delete this sticker?')) {
-        userStickers.splice(index, 1);
-        localStorage.setItem('userStickers', JSON.stringify(userStickers));
-        loadUserStickers();
-      }
+      const stickers = JSON.parse(localStorage.getItem("stickers") || "[]");
+      stickers.splice(index, 1);
+      localStorage.setItem("stickers", JSON.stringify(stickers));
+      loadStickers();
     }
 
-    function sendSticker(stickerUrl) {
-      sendMessage('', { type: 'image', url: stickerUrl }, true);
-      document.getElementById('stickers-container').style.display = 'none';
-      document.getElementById('stickers-toggle').classList.remove('active');
+    function sendSticker(url) {
+      const message = {
+        id: Date.now(),
+        text: "",
+        media: url,
+        isSticker: true,
+        sender: currentUser,
+        timestamp: new Date(),
+        replyTo: replyingTo
+      };
+      
+      addMessage(message);
+      document.getElementById("stickers-container").style.display = "none";
+      document.getElementById("stickers-toggle").classList.remove("active");
+      clearReply();
+    }
+
+    function sendMessage() {
+      const messageInput = document.getElementById("message-input");
+      const mediaPreview = document.getElementById("media-preview");
+      const text = messageInput.value.trim();
+      
+      if (!text && !mediaPreview.src) return;
+      
+      const message = {
+        id: Date.now(),
+        text: text,
+        media: mediaPreview.src && mediaPreview.src !== "/placeholder.svg" ? mediaPreview.src : null,
+        isSticker: isSticker,
+        sender: currentUser,
+        timestamp: new Date(),
+        replyTo: replyingTo
+      };
+      
+      if (isSticker) {
+        const stickers = JSON.parse(localStorage.getItem("stickers") || "[]");
+        if (stickers.length >= 20) {
+          alert("Maximum 20 stickers allowed. Delete some stickers first.");
+          return;
+        }
+        stickers.push(mediaPreview.src);
+        localStorage.setItem("stickers", JSON.stringify(stickers));
+        loadStickers();
+      }
+      
+      addMessage(message);
+      messageInput.value = "";
+      clearMediaPreview();
+      clearReply();
+      updateCharCounter();
+      autoResize();
+      
+      // Simulate response
+      setTimeout(() => {
+        const response = {
+          id: Date.now() + 1,
+          text: "Thanks for your message!",
+          sender: recipient,
+          timestamp: new Date()
+        };
+        addMessage(response);
+      }, 1000);
+    }
+
+    function addMessage(message) {
+      const messagesContainer = document.getElementById("messages");
+      const messageDiv = document.createElement("div");
+      
+      const isSent = message.sender.id === currentUser.id;
+      messageDiv.className = `message ${isSent ? 'sent' : 'received'}${message.sender.verified ? ' verified' : ''}`;
+      
+      let content = '';
+      
+      if (message.replyTo) {
+        content += `<div style="background: rgba(255,255,255,0.1); padding: 8px; border-radius: 8px; margin-bottom: 8px; font-size: 12px;">
+          Replying to: ${message.replyTo.text || 'Media'}
+        </div>`;
+      }
+      
+      if (!isSent) {
+        content += `<div class="message-header">
+          ${message.sender.name}
+          ${message.sender.verified ? '<img src="/verified.png" alt="Verified" class="verified-badge">' : ''}
+        </div>`;
+      }
+      
+      if (message.media) {
+        if (message.isSticker) {
+          messageDiv.classList.add('sticker-message');
+          content += `<img src="${message.media}" alt="Sticker">`;
+        } else {
+          const fileType = getFileType(message.media);
+          if (fileType === 'video') {
+            content += `<video controls><source src="${message.media}"></video>`;
+          } else if (fileType === 'audio') {
+            content += `<audio controls><source src="${message.media}"></audio>`;
+          } else {
+            content += `<img src="${message.media}" alt="Media">`;
+          }
+        }
+      }
+      
+      if (message.text) {
+        content += `<div>${message.text}</div>`;
+      }
+      
+      content += `<div class="message-time">${formatTime(message.timestamp)}</div>`;
+      
+      messageDiv.innerHTML = content;
+      messageDiv.onclick = () => replyToMessage(message);
+      
+      messagesContainer.appendChild(messageDiv);
+      messagesContainer.scrollTop = messagesContainer.scrollHeight;
+    }
+
+    function getFileType(src) {
+      if (src.includes('video') || src.endsWith('.mp4') || src.endsWith('.webm')) return 'video';
+      if (src.includes('audio') || src.endsWith('.mp3') || src.endsWith('.wav')) return 'audio';
+      return 'image';
+    }
+
+    function formatTime(date) {
+      return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     }
 
     function replyToMessage(message) {
       replyingTo = message;
-      const replyPreview = document.getElementById('reply-input-preview');
-      replyPreview.innerHTML = `
-        <span>Replying to: ${message.text || 'Media message'}</span>
-        <button onclick="cancelReply()">Cancel</button>
+      const preview = document.getElementById("reply-input-preview");
+      preview.innerHTML = `
+        <span>Replying to: ${message.text || 'Media'}</span>
+        <button onclick="clearReply()">×</button>
       `;
-      replyPreview.style.display = 'flex';
-      document.getElementById('message-input').focus();
+      preview.style.display = "flex";
+      document.getElementById("message-input").focus();
     }
 
-    function cancelReply() {
+    function clearReply() {
       replyingTo = null;
-      document.getElementById('reply-input-preview').style.display = 'none';
+      document.getElementById("reply-input-preview").style.display = "none";
     }
-
-    function sendMessage(text = '', media = null, isSticker = false) {
-      if (!text.trim() && !media) return;
-      
-      const messages = JSON.parse(localStorage.getItem(`messages_${currentRecipientId}`) || '[]');
-      const message = {
-        id: Date.now(),
-        sender: 'You',
-        text: text.trim(),
-        media: media,
-        isSticker: isSticker,
-        type: 'sent',
-        timestamp: new Date().toISOString(),
-        replyTo: replyingTo ? replyingTo.text || 'Media message' : null,
-        isVerified: Math.random() > 0.7 // Random verification for demo
-      };
-      
-      messages.push(message);
-      localStorage.setItem(`messages_${currentRecipientId}`, JSON.stringify(messages));
-      
-      document.getElementById('message-input').value = '';
-      updateCharCounter();
-      cancelReply();
-      clearMediaPreview();
-      loadMessages();
-      
-      // Simulate response
-      setTimeout(() => {
-        const responses = [
-          "That's interesting! 🤔",
-          "I see what you mean 👍",
-          "Thanks for sharing! 😊",
-          "Got it! 👌",
-          "Nice! ✨"
-        ];
-        
-        const responseMessage = {
-          id: Date.now() + 1,
-          sender: currentRecipientId,
-          text: responses[Math.floor(Math.random() * responses.length)],
-          media: null,
-          isSticker: false,
-          type: 'received',
-          timestamp: new Date().toISOString(),
-          replyTo: null,
-          isVerified: Math.random() > 0.8
-        };
-        
-        const updatedMessages = JSON.parse(localStorage.getItem(`messages_${currentRecipientId}`) || '[]');
-        updatedMessages.push(responseMessage);
-        localStorage.setItem(`messages_${currentRecipientId}`, JSON.stringify(updatedMessages));
-        loadMessages();
-      }, 1000 + Math.random() * 2000);
-    }
-
-    function updateCharCounter() {
-      const input = document.getElementById('message-input');
-      const counter = document.getElementById('char-counter');
-      const length = input.value.length;
-      counter.textContent = `${length}/1000`;
-      counter.className = length > 1000 ? 'char-counter error' : 'char-counter';
-      
-      document.getElementById('send-button').disabled = length > 1000;
-    }
-
-    // Event listeners
-    const messageInput = document.getElementById("message-input");
-    const sendButton = document.getElementById("send-button");
-    const fileInput = document.getElementById("file-input");
-    const fileButton = document.getElementById("file-button");
-    const mediaPreview = document.getElementById("media-preview");
-    const mediaPreviewContainer = document.getElementById("media-preview-container");
-    const createStickerButton = document.getElementById("create-sticker-button");
-    const stickersContainer = document.getElementById("stickers-container");
-    const stickersToggle = document.getElementById("stickers-toggle");
-    const charCounter = document.getElementById("char-counter");
-
-    messageInput.addEventListener('input', function() {
-      this.style.height = 'auto';
-      this.style.height = Math.min(this.scrollHeight, 120) + 'px';
-      updateCharCounter();
-    });
-
-    messageInput.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter' && !e.shiftKey) {
-        e.preventDefault();
-        if (!sendButton.disabled) {
-          sendMessage(messageInput.value);
-        }
-      }
-    });
-
-    sendButton.addEventListener('click', () => {
-      if (!sendButton.disabled) {
-        sendMessage(messageInput.value);
-      }
-    });
-
-    fileButton.addEventListener("click", () => {
-      fileInput.click();
-    });
-
-    fileInput.addEventListener("change", () => {
-      const file = fileInput.files[0];
-      if (file) {
-        const reader = new FileReader();
-        reader.onload = () => {
-          if (file.type.startsWith("image")) {
-            mediaPreview.src = reader.result;
-            mediaPreviewContainer.style.display = "flex";
-            isSticker = false;
-            createStickerButton.style.display = "inline-block";
-          } else if (file.type.startsWith("video") || file.type.startsWith("audio")) {
-            // For video/audio, we'll send directly without preview
-            const mediaType = file.type.startsWith("video") ? "video" : "audio";
-            sendMessage('', { type: mediaType, url: reader.result });
-          }
-        };
-        reader.readAsDataURL(file);
-      } else {
-        clearMediaPreview();
-      }
-    });
-
-    createStickerButton.addEventListener("click", () => {
-      if (userStickers.length >= MAX_STICKERS) {
-        alert(`You can only have ${MAX_STICKERS} stickers. Delete some to create new ones.`);
-        return;
-      }
-      
-      isSticker = true;
-      createStickerButton.style.display = "none";
-      
-      // Add to user stickers
-      userStickers.push(mediaPreview.src);
-      localStorage.setItem('userStickers', JSON.stringify(userStickers));
-      loadUserStickers();
-    });
-
-    stickersToggle.addEventListener("click", () => {
-      const isVisible = stickersContainer.style.display === "block";
-      stickersContainer.style.display = isVisible ? "none" : "block";
-      stickersToggle.classList.toggle("active", !isVisible);
-    });
 
     function clearMediaPreview() {
+      const fileInput = document.getElementById("file-input");
+      const mediaPreview = document.getElementById("media-preview");
+      const mediaPreviewContainer = document.getElementById("media-preview-container");
+      const createStickerButton = document.getElementById("create-sticker-button");
+      
       fileInput.value = "";
       mediaPreview.src = "";
       mediaPreviewContainer.style.display = "none";
@@ -994,19 +953,31 @@
       isSticker = false;
     }
 
-    sendButton.addEventListener('click', () => {
-      const text = messageInput.value.trim();
-      const hasMedia = mediaPreview.src && mediaPreview.src !== '/placeholder.svg';
+    function loadMessages() {
+      // Sample messages for demonstration
+      const sampleMessages = [
+        {
+          id: 1,
+          text: "Hey there! How are you doing?",
+          sender: recipient,
+          timestamp: new Date(Date.now() - 300000)
+        },
+        {
+          id: 2,
+          text: "I'm doing great! Thanks for asking. How about you?",
+          sender: currentUser,
+          timestamp: new Date(Date.now() - 240000)
+        },
+        {
+          id: 3,
+          text: "That's wonderful to hear! I'm doing well too.",
+          sender: recipient,
+          timestamp: new Date(Date.now() - 180000)
+        }
+      ];
       
-      if (hasMedia) {
-        sendMessage(text, { type: 'image', url: mediaPreview.src }, isSticker);
-      } else if (text) {
-        sendMessage(text);
-      }
-    });
-
-    // Initialize
-    updateCharCounter();
+      sampleMessages.forEach(message => addMessage(message));
+    }
   </script>
 </body>
 </html>
