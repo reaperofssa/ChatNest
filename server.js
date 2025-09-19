@@ -555,204 +555,6 @@ io.on("connection", (socket) => {
 });
 
 // Send message route
-app.post("/message/:userid", async (req, res) => {
-  try {
-    const { userid } = req.params;
-    const { authToken, text, replyTo, fileBase64, fileType, issticker } = req.body;
-
-    if (!authToken) return res.status(400).json({ error: "authToken is required" });
-
-    // Verify sender
-    const sender = await User.findOne({ authToken });
-    if (!sender) return res.status(401).json({ error: "Invalid authToken" });
-
-    // Verify receiver
-    if (!userid || isNaN(userid)) return res.status(400).json({ error: "Invalid receiver id" });
-    const receiver = await User.findOne({ id: Number(userid) });
-    if (!receiver) return res.status(404).json({ error: "Receiver not found" });
-
-    // Verify replyTo if provided
-    if (replyTo) {
-      const originalMessage = await Message.findOne({ id: replyTo });
-      if (!originalMessage) {
-        return res.status(404).json({ error: "Original message to reply to not found" });
-      }
-    }
-
-    // Generate unique message ID
-    let messageId;
-    do {
-      messageId = generateMessageId();
-    } while (await Message.findOne({ id: messageId }));
-
-    // Handle file upload
-    let fileUrl = null;
-    let finalIsSticker = false;
-
-    if (fileBase64 && fileType) {
-      try {
-        const buffer = Buffer.from(fileBase64, "base64");
-        if (buffer.length > 10 * 1024 * 1024)
-          return res.status(400).json({ error: "File size exceeds 10MB limit" });
-
-        const [typeMain, typeSub] = fileType.split("/");
-        if (!typeMain) return res.status(400).json({ error: "Invalid fileType" });
-
-        const ext = typeSub || "dat";
-        const fileName = `${messageId}.${ext}`;
-
-        const form = new FormData();
-        form.append("reqtype", "fileupload");
-        form.append("userhash", "");
-        form.append("fileToUpload", buffer, fileName);
-
-        const catboxResponse = await axios.post("https://catbox.moe/user/api.php", form, {
-          headers: form.getHeaders(),
-        });
-
-        if (!catboxResponse.data || catboxResponse.data.startsWith("ERROR")) {
-          return res.status(500).json({ error: "Failed to upload file to Catbox" });
-        }
-
-        fileUrl = catboxResponse.data;
-        finalIsSticker = (typeMain === "image") && Boolean(issticker);
-      } catch (uploadErr) {
-        console.error("File upload error:", uploadErr);
-        return res.status(500).json({ error: "File upload failed" });
-      }
-    }
-
-    // Save message
-    const newMessage = new Message({
-      id: messageId,
-      senderId: sender.id,
-      receiverId: receiver.id,
-      text: text || "",
-      fileUrl,
-      fileType: fileType || null,
-      replyTo: replyTo || null,
-      issticker: finalIsSticker
-    });
-    await newMessage.save();
-
-    // Prepare emit data
-    const emitMessage = {
-      ...newMessage.toObject(),
-      senderUsername: sender.username,
-      senderName: sender.name,
-      receiverUsername: receiver.username,
-      receiverName: receiver.name
-    };
-
-    // Emit to sender
-    const senderRoom = `user_${sender.id}`;
-    const receiverRoom = `user_${receiver.id}`;
-
-    const senderSockets = io.sockets.adapter.rooms.get(senderRoom);
-    if (senderSockets && senderSockets.size > 0) {
-      io.to(senderRoom).emit("newMessage", emitMessage);
-      io.to(senderRoom).emit("updateMyChats", {
-        type: "private",
-        id: receiver.id,
-        name: receiver.name,
-        username: receiver.username,
-        latestMessage: `${sender.name}: ${emitMessage.text?.slice(0, 50) || ""}`,
-        timestamp: emitMessage.timestamp
-      });
-    }
-
-    // Emit to receiver
-    const receiverSockets = io.sockets.adapter.rooms.get(receiverRoom);
-    if (receiverSockets && receiverSockets.size > 0) {
-      io.to(receiverRoom).emit("newMessage", emitMessage);
-      io.to(receiverRoom).emit("updateMyChats", {
-        type: "private",
-        id: sender.id,
-        name: sender.name,
-        username: sender.username,
-        latestMessage: `${sender.name}: ${emitMessage.text?.slice(0, 50) || ""}`,
-        timestamp: emitMessage.timestamp
-      });
-    }
-
-    return res.status(201).json({ message: "Message sent successfully", data: emitMessage });
-  } catch (err) {
-    console.error("Error sending message:", err);
-    return res.status(500).json({ error: "Internal server error" });
-  }
-});
-
-// Get messages route with replies
-app.get("/messages", async (req, res) => {
-  try {
-    const { userid, limit = 50, from, to } = req.query;
-    if (!userid) return res.status(400).json({ error: "userid is required" });
-
-    const query = { $or: [{ senderId: Number(userid) }, { receiverId: Number(userid) }] };
-    if (from || to) query.timestamp = {};
-    if (from) query.timestamp.$gte = new Date(from);
-    if (to) query.timestamp.$lte = new Date(to);
-
-    const messages = await Message.find({ ...query, replyTo: null })
-      .sort({ timestamp: -1 })
-      .limit(Number(limit));
-
-    const messageIds = messages.map(msg => msg.id);
-    const replies = await Message.find({ replyTo: { $in: messageIds } }).sort({ timestamp: 1 });
-
-    const messagesWithReplies = await Promise.all(messages.map(async (msg) => {
-      const sender = await User.findOne({ id: msg.senderId });
-      const receiver = await User.findOne({ id: msg.receiverId });
-
-      const msgReplies = await Promise.all(
-        replies
-          .filter(r => r.replyTo === msg.id)
-          .map(async (r) => {
-            const replySender = await User.findOne({ id: r.senderId });
-            const replyReceiver = await User.findOne({ id: r.receiverId });
-            return {
-              id: r.id,
-              senderId: r.senderId,
-              senderUsername: replySender?.username || null,
-              senderName: replySender?.name || null,
-              receiverId: r.receiverId,
-              receiverUsername: replyReceiver?.username || null,
-              receiverName: replyReceiver?.name || null,
-              text: r.text,
-              fileUrl: r.fileUrl,
-              fileType: r.fileType,
-              issticker: r.issticker || false,
-              timestamp: r.timestamp,
-              replyTo: r.replyTo
-            };
-          })
-      );
-
-      return {
-        id: msg.id,
-        senderId: msg.senderId,
-        senderUsername: sender?.username || null,
-        senderName: sender?.name || null,
-        receiverId: msg.receiverId,
-        receiverUsername: receiver?.username || null,
-        receiverName: receiver?.name || null,
-        text: msg.text,
-        fileUrl: msg.fileUrl,
-        fileType: msg.fileType,
-        issticker: msg.issticker || false,
-        timestamp: msg.timestamp,
-        replyTo: msg.replyTo,
-        replies: msgReplies
-      };
-    }));
-
-    return res.status(200).json(messagesWithReplies);
-  } catch (err) {
-    console.error("Error fetching messages:", err);
-    return res.status(500).json({ error: "Internal server error" });
-  }
-});
-
 app.get("/messages/:recipientId", async (req, res) => {
   try {
     const { recipientId } = req.params;
@@ -790,6 +592,279 @@ app.get("/messages/:recipientId", async (req, res) => {
 
     const messageIds = messages.map(msg => msg.id);
 
+    const replies = await Message.find({ replyTo: { $in: messageIds } }).sort({ timestamp: 1 });
+
+    const messagesWithReplies = await Promise.all(messages.map(async (msg) => {
+      const sender = await User.findOne({ id: msg.senderId });
+      const receiver = await User.findOne({ id: msg.receiverId });
+
+      const msgReplies = await Promise.all(
+        replies
+          .filter(r => r.replyTo === msg.id)
+          .map(async (r) => {
+            const replySender = await User.findOne({ id: r.senderId });
+            const replyReceiver = await User.findOne({ id: r.receiverId });
+            return {
+              id: r.id,
+              senderId: r.senderId,
+              senderUsername: replySender?.username || null,
+              senderName: replySender?.name || null,
+              senderVerified: replySender?.verified || false, // Added
+              receiverId: r.receiverId,
+              receiverUsername: replyReceiver?.username || null,
+              receiverName: replyReceiver?.name || null,
+              receiverVerified: replyReceiver?.verified || false, // Added
+              text: r.text,
+              fileUrl: r.fileUrl,
+              fileType: r.fileType,
+              issticker: r.issticker || false,
+              timestamp: r.timestamp,
+              replyTo: r.replyTo
+            };
+          })
+      );
+
+      return {
+        id: msg.id,
+        senderId: msg.senderId,
+        senderUsername: sender?.username || null,
+        senderName: sender?.name || null,
+        senderVerified: sender?.verified || false, // Added
+        receiverId: msg.receiverId,
+        receiverUsername: receiver?.username || null,
+        receiverName: receiver?.name || null,
+        receiverVerified: receiver?.verified || false, // Added
+        text: msg.text,
+        fileUrl: msg.fileUrl,
+        fileType: msg.fileType,
+        issticker: msg.issticker || false,
+        timestamp: msg.timestamp,
+        replyTo: msg.replyTo,
+        replies: msgReplies
+      };
+    }));
+
+    return res.status(200).json(messagesWithReplies);
+  } catch (err) {
+    console.error("Error fetching messages:", err);
+    return res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// Updated /message/:userid to include verified status
+app.post("/message/:userid", async (req, res) => {
+  try {
+    const { userid } = req.params;
+    const { authToken, text, replyTo, fileBase64, fileType, issticker } = req.body;
+
+    if (!authToken) return res.status(400).json({ error: "authToken is required" });
+
+    const sender = await User.findOne({ authToken });
+    if (!sender) return res.status(401).json({ error: "Invalid authToken" });
+
+    if (!userid || isNaN(userid)) return res.status(400).json({ error: "Invalid receiver id" });
+    const receiver = await User.findOne({ id: Number(userid) });
+    if (!receiver) return res.status(404).json({ error: "Receiver not found" });
+
+    if (replyTo) {
+      const originalMessage = await Message.findOne({ id: replyTo });
+      if (!originalMessage) {
+        return res.status(404).json({ error: "Original message to reply to not found" });
+      }
+    }
+
+    let messageId;
+    do {
+      messageId = generateMessageId();
+    } while (await Message.findOne({ id: messageId }));
+
+    let fileUrl = null;
+    let finalIsSticker = false;
+
+    if (fileBase64 && fileType) {
+      try {
+        const buffer = Buffer.from(fileBase64, "base64");
+        if (buffer.length > 10 * 1024 * 1024)
+          return res.status(400).json({ error: "File size exceeds 10MB limit" });
+
+        const [typeMain, typeSub] = fileType.split("/");
+        if (!typeMain) return res.status(400).json({ error: "Invalid fileType" });
+
+        const ext = typeSub || "dat";
+        const fileName = `${messageId}.${ext}`;
+
+        const form = new FormData();
+        form.append("reqtype", "fileupload");
+        form.append("userhash", "");
+        form.append("fileToUpload", buffer, fileName);
+
+        const catboxResponse = await axios.post("https://catbox.moe/user/api.php", form, {
+          headers: form.getHeaders(),
+        });
+
+        if (!catboxResponse.data || catboxResponse.data.startsWith("ERROR")) {
+          return res.status(500).json({ error: "Failed to upload file to Catbox" });
+        }
+
+        fileUrl = catboxResponse.data;
+        finalIsSticker = (typeMain === "image") && Boolean(issticker);
+      } catch (uploadErr) {
+        console.error("File upload error:", uploadErr);
+        return res.status(500).json({ error: "File upload failed" });
+      }
+    }
+
+    const newMessage = new Message({
+      id: messageId,
+      senderId: sender.id,
+      receiverId: receiver.id,
+      text: text || "",
+      fileUrl,
+      fileType: fileType || null,
+      replyTo: replyTo || null,
+      issticker: finalIsSticker
+    });
+    await newMessage.save();
+
+    const emitMessage = {
+      ...newMessage.toObject(),
+      senderUsername: sender.username,
+      senderName: sender.name,
+      senderVerified: sender.verified, // Added
+      receiverUsername: receiver.username,
+      receiverName: receiver.name,
+      receiverVerified: receiver.verified // Added
+    };
+
+    const senderRoom = `user_${sender.id}`;
+    const receiverRoom = `user_${receiver.id}`;
+
+    const senderSockets = io.sockets.adapter.rooms.get(senderRoom);
+    if (senderSockets && senderSockets.size > 0) {
+      io.to(senderRoom).emit("newMessage", emitMessage);
+      io.to(senderRoom).emit("updateMyChats", {
+        type: "private",
+        id: receiver.id,
+        name: receiver.name,
+        username: receiver.username,
+        latestMessage: `${sender.name}: ${emitMessage.text?.slice(0, 50) || ""}`,
+        timestamp: emitMessage.timestamp
+      });
+    }
+
+    const receiverSockets = io.sockets.adapter.rooms.get(receiverRoom);
+    if (receiverSockets && receiverSockets.size > 0) {
+      io.to(receiverRoom).emit("newMessage", emitMessage);
+      io.to(receiverRoom).emit("updateMyChats", {
+        type: "private",
+        id: sender.id,
+        name: sender.name,
+        username: sender.username,
+        latestMessage: `${sender.name}: ${emitMessage.text?.slice(0, 50) || ""}`,
+        timestamp: emitMessage.timestamp
+      });
+    }
+
+    return res.status(201).json({ message: "Message sent successfully", data: emitMessage });
+  } catch (err) {
+    console.error("Error sending message:", err);
+    return res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// Existing /get/:messageid route (unchanged, already includes verified status)
+app.get("/get/:messageid", async (req, res) => {
+  try {
+    const { messageid } = req.params;
+    const { authToken } = req.query;
+
+    if (!authToken) {
+      return res.status(400).json({ error: "authToken is required" });
+    }
+
+    const user = await User.findOne({ authToken });
+    if (!user) {
+      return res.status(401).json({ error: "Invalid authToken" });
+    }
+
+    const message = await Message.findOne({ id: messageid });
+    if (!message) {
+      return res.status(404).json({ error: "Message not found" });
+    }
+
+    if (message.senderId !== user.id && message.receiverId !== user.id) {
+      return res.status(403).json({ error: "Unauthorized access to message" });
+    }
+
+    const sender = await User.findOne({ id: message.senderId });
+    const receiver = await User.findOne({ id: message.receiverId });
+
+    const replies = await Message.find({ replyTo: messageid }).sort({ timestamp: 1 });
+    const msgReplies = await Promise.all(
+      replies.map(async (r) => {
+        const replySender = await User.findOne({ id: r.senderId });
+        const replyReceiver = await User.findOne({ id: r.receiverId });
+        return {
+          id: r.id,
+          senderId: r.senderId,
+          senderUsername: replySender?.username || null,
+          senderName: replySender?.name || null,
+          senderVerified: replySender?.verified || false,
+          receiverId: r.receiverId,
+          receiverUsername: replyReceiver?.username || null,
+          receiverName: replyReceiver?.name || null,
+          receiverVerified: replyReceiver?.verified || false,
+          text: r.text,
+          fileUrl: r.fileUrl,
+          fileType: r.fileType,
+          issticker: r.issticker || false,
+          timestamp: r.timestamp,
+          replyTo: r.replyTo
+        };
+      })
+    );
+
+    const messageData = {
+      id: message.id,
+      senderId: message.senderId,
+      senderUsername: sender?.username || null,
+      senderName: sender?.name || null,
+      senderVerified: sender?.verified || false,
+      receiverId: message.receiverId,
+      receiverUsername: receiver?.username || null,
+      receiverName: receiver?.name || null,
+      receiverVerified: receiver?.verified || false,
+      text: message.text,
+      fileUrl: message.fileUrl,
+      fileType: message.fileType,
+      issticker: message.issticker || false,
+      timestamp: message.timestamp,
+      replyTo: message.replyTo,
+      replies: msgReplies
+    };
+
+    return res.status(200).json(messageData);
+  } catch (err) {
+    console.error("Error fetching message:", err);
+    return res.status(500).json({ error: "Internal server error" });
+  }
+});
+// Get messages route with replies
+app.get("/messages", async (req, res) => {
+  try {
+    const { userid, limit = 50, from, to } = req.query;
+    if (!userid) return res.status(400).json({ error: "userid is required" });
+
+    const query = { $or: [{ senderId: Number(userid) }, { receiverId: Number(userid) }] };
+    if (from || to) query.timestamp = {};
+    if (from) query.timestamp.$gte = new Date(from);
+    if (to) query.timestamp.$lte = new Date(to);
+
+    const messages = await Message.find({ ...query, replyTo: null })
+      .sort({ timestamp: -1 })
+      .limit(Number(limit));
+
+    const messageIds = messages.map(msg => msg.id);
     const replies = await Message.find({ replyTo: { $in: messageIds } }).sort({ timestamp: 1 });
 
     const messagesWithReplies = await Promise.all(messages.map(async (msg) => {
