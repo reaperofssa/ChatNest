@@ -58,6 +58,7 @@
     }
     .message-text {
       white-space: pre-wrap; /* Preserves whitespace and line breaks */
+      margin-top: 5px; /* Space above caption */
     }
   </style>
 </head>
@@ -105,13 +106,8 @@
         const isSender = (msg.senderId !== Number(recipientId));
         div.classList.add(isSender ? "sent" : "received");
 
-        // Message content
+        // Message content: render media first, then text (caption) below
         let content = "";
-        if (msg.text) {
-          // Replace \n with <br> for line breaks
-          const formattedText = msg.text.replace(/\n/g, "<br>");
-          content += `<div class="message-text">${formattedText}</div>`;
-        }
         if (msg.fileUrl) {
           if (msg.issticker) {
             content += `<img src="${msg.fileUrl}" alt="Sticker" class="sticker">`;
@@ -124,6 +120,11 @@
           } else {
             content += `<a href="${msg.fileUrl}" target="_blank">Download file</a>`;
           }
+        }
+        if (msg.text) {
+          // Replace \n with <br> for line breaks
+          const formattedText = msg.text.replace(/\n/g, "<br>");
+          content += `<div class="message-text">${formattedText}</div>`;
         }
 
         div.innerHTML = `
@@ -145,11 +146,6 @@
             replyDiv.style.background = "#f5f5f5";
 
             let replyContent = "";
-            if (reply.text) {
-              // Replace \n with <br> for line breaks
-              const formattedReplyText = reply.text.replace(/\n/g, "<br>");
-              replyContent += `<div class="message-text">${formattedReplyText}</div>`;
-            }
             if (reply.fileUrl) {
               if (reply.issticker) {
                 replyContent += `<img src="${reply.fileUrl}" alt="Sticker" class="sticker">`;
@@ -162,6 +158,11 @@
               } else {
                 replyContent += `<a href="${reply.fileUrl}" target="_blank">Download file</a>`;
               }
+            }
+            if (reply.text) {
+              // Replace \n with <br> for line breaks
+              const formattedReplyText = reply.text.replace(/\n/g, "<br>");
+              replyContent += `<div class="message-text">${formattedReplyText}</div>`;
             }
 
             replyDiv.innerHTML = `
