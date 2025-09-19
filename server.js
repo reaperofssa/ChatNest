@@ -752,10 +752,11 @@ app.get("/messages", async (req, res) => {
     return res.status(500).json({ error: "Internal server error" });
   }
 });
+
 app.get("/messages/:recipientId", async (req, res) => {
   try {
     const { recipientId } = req.params;
-    const { authToken, limit = 50, from, to } = req.query;
+    const { authToken, limit = 20, before } = req.query;
 
     if (!authToken) {
       return res.status(400).json({ error: "authToken is required" });
@@ -764,7 +765,6 @@ app.get("/messages/:recipientId", async (req, res) => {
       return res.status(400).json({ error: "recipientId is required" });
     }
 
-    // Find the user from the token
     const user = await User.findOne({ authToken });
     if (!user) {
       return res.status(401).json({ error: "Invalid authToken" });
@@ -780,18 +780,16 @@ app.get("/messages/:recipientId", async (req, res) => {
       replyTo: null
     };
 
-    if (from || to) query.timestamp = {};
-    if (from) query.timestamp.$gte = new Date(from);
-    if (to) query.timestamp.$lte = new Date(to);
+    if (before) {
+      query.timestamp = { $lt: new Date(before) };
+    }
 
-    // Fetch main messages
     const messages = await Message.find(query)
-      .sort({ timestamp: -1 })
+      .sort({ timestamp: -1 }) // Newest first
       .limit(Number(limit));
 
     const messageIds = messages.map(msg => msg.id);
 
-    // Fetch replies
     const replies = await Message.find({ replyTo: { $in: messageIds } }).sort({ timestamp: 1 });
 
     const messagesWithReplies = await Promise.all(messages.map(async (msg) => {
