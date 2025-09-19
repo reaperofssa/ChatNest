@@ -16,6 +16,20 @@
       display: flex;
       flex-direction: column;
     }
+    #header {
+      background: white;
+      padding: 10px 15px;
+      border-bottom: 1px solid #ddd;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    #header button {
+      background: none;
+      border: none;
+      font-size: 1.2em;
+      cursor: pointer;
+    }
     #messages {
       flex: 1;
       padding: 15px;
@@ -29,7 +43,7 @@
       border-radius: 6px;
       max-width: 70%;
       word-wrap: break-word;
-      cursor: pointer; /* Clickable for replies */
+      cursor: pointer;
     }
     .sent {
       background: #dcf8c6;
@@ -43,6 +57,16 @@
       font-size: 0.8em;
       color: #666;
       margin-top: 4px;
+    }
+    .username {
+      font-size: 0.9em;
+      font-weight: bold;
+      margin-bottom: 4px;
+    }
+    .verified {
+      color: #1da1f2;
+      font-size: 0.8em;
+      margin-left: 5px;
     }
     img, video {
       max-width: 100%;
@@ -60,6 +84,14 @@
     .message-text {
       white-space: pre-wrap;
       margin-top: 5px;
+    }
+    .reply-preview {
+      background: #f5f5f5;
+      padding: 5px 10px;
+      border-radius: 4px;
+      font-size: 0.9em;
+      margin-bottom: 5px;
+      border-left: 3px solid #007bff;
     }
     #input-container {
       padding: 10px;
@@ -99,12 +131,30 @@
       border-radius: 4px;
       cursor: pointer;
     }
+    #media-preview {
+      max-width: 100px;
+      max-height: 100px;
+      margin-top: 5px;
+      border-radius: 4px;
+    }
+    #media-preview-container {
+      display: none;
+      padding: 5px;
+      background: #f5f5f5;
+      border-radius: 4px;
+    }
+    #media-preview-container button {
+      background: none;
+      border: none;
+      color: #ff0000;
+      cursor: pointer;
+    }
     #typing-indicator {
       font-size: 0.9em;
       color: #666;
       padding: 5px 15px;
     }
-    #reply-preview {
+    #reply-input-preview {
       background: #f5f5f5;
       padding: 5px 10px;
       border-radius: 4px;
@@ -113,7 +163,7 @@
       justify-content: space-between;
       align-items: center;
     }
-    #reply-preview button {
+    #reply-input-preview button {
       background: none;
       border: none;
       color: #ff0000;
@@ -123,10 +173,18 @@
 </head>
 <body>
   <div id="chat-container">
+    <div id="header">
+      <button onclick="window.location.href='/chats.html'">←</button>
+      <span id="recipient-name"></span>
+    </div>
     <div id="messages"></div>
     <div id="typing-indicator"></div>
     <div id="input-container">
-      <div id="reply-preview" style="display: none;"></div>
+      <div id="reply-input-preview" style="display: none;"></div>
+      <div id="media-preview-container">
+        <img id="media-preview" src="" alt="Media Preview">
+        <button onclick="clearMediaPreview()">X</button>
+      </div>
       <div style="display: flex; gap: 10px;">
         <textarea id="message-input" placeholder="Type a message..." rows="2"></textarea>
         <button id="send-button">Send</button>
@@ -143,6 +201,7 @@
     let earliestTimestamp = null;
     let replyingTo = null;
     let typingTimeout = null;
+    let recipientData = null;
 
     // Get recipientId and authToken
     const params = window.location.pathname.split("/");
@@ -152,6 +211,27 @@
     if (!authToken) {
       alert("No authToken found in localStorage. Please log in first.");
       window.location.href = "/login";
+    }
+
+    // Fetch recipient details
+    async function fetchRecipient() {
+      try {
+        const res = await fetch(`/user/id/${recipientId}`);
+        const data = await res.json();
+        if (res.ok) {
+          recipientData = data;
+          document.getElementById("recipient-name").innerHTML = `
+            ${escapeHtml(data.name || data.username)} 
+            ${data.verified ? '<span class="verified">[Verified]</span>' : ''}
+          `;
+        } else {
+          console.error("Error:", data.error);
+          document.getElementById("recipient-name").textContent = "Unknown User";
+        }
+      } catch (err) {
+        console.error("Error fetching recipient:", err);
+        document.getElementById("recipient-name").textContent = "Error";
+      }
     }
 
     // Join user room
@@ -170,9 +250,9 @@
         const data = await res.json();
 
         if (res.ok) {
-          renderMessages(data, recipientId, !before); // Append for initial load, prepend for scroll
+          renderMessages(data, recipientId, !before);
           if (data.length > 0) {
-            earliestTimestamp = data[data.length - 1].timestamp; // Update earliest timestamp
+            earliestTimestamp = data[data.length - 1].timestamp;
           }
         } else {
           console.error("Error:", data.error);
@@ -186,18 +266,58 @@
       }
     }
 
-    function renderMessages(messages, recipientId, append = true) {
+    // Fetch message metadata for replies
+    async function fetchMessageMetadata(messageId) {
+      try {
+        const res = await fetch(`/get/${messageId}?authToken=${encodeURIComponent(authToken)}`);
+        const data = await res.json();
+        if (res.ok) {
+          return data;
+        } else {
+          console.error("Error fetching message:", data.error);
+          return null;
+        }
+      } catch (err) {
+        console.error("Error fetching message metadata:", err);
+        return null;
+      }
+    }
+
+    async function renderMessages(messages, recipientId, append = true) {
       const container = document.getElementById("messages");
       const wasAtBottom = container.scrollTop + container.clientHeight >= container.scrollHeight - 10;
 
-      messages.forEach(msg => {
+      for (const msg of messages) {
         const div = document.createElement("div");
         div.classList.add("message");
-        div.dataset.messageId = msg.id; // For reply functionality
+        div.dataset.messageId = msg.id;
         const isSender = (msg.senderId !== Number(recipientId));
         div.classList.add(isSender ? "sent" : "received");
 
         let content = "";
+        // Username with verified badge
+        content += `
+          <div class="username">
+            ${escapeHtml(msg.senderName || msg.senderUsername || "Unknown")}
+            ${msg.senderVerified ? '<span class="verified">[Verified]</span>' : ''}
+          </div>
+        `;
+
+        // Reply thumbnail if replyTo exists
+        if (msg.replyTo) {
+          const replyData = await fetchMessageMetadata(msg.replyTo);
+          if (replyData) {
+            const replyText = replyData.text || "[Media]";
+            content += `
+              <div class="reply-preview">
+                ${escapeHtml(replyData.senderName || replyData.senderUsername || "Unknown")}: 
+                ${escapeHtml(replyText.slice(0, 50))}${replyText.length > 50 ? "..." : ""}
+              </div>
+            `;
+          }
+        }
+
+        // Message content
         if (msg.fileUrl) {
           if (msg.issticker) {
             content += `<img src="${msg.fileUrl}" alt="Sticker" class="sticker">`;
@@ -219,12 +339,10 @@
         div.innerHTML = `
           ${content || "[Media]"}
           <div class="meta">
-            ${msg.senderName || msg.senderUsername || "Unknown"} • 
             ${new Date(msg.timestamp).toLocaleString()}
           </div>
         `;
 
-        // Click to reply
         div.addEventListener("click", () => {
           replyingTo = { id: msg.id, text: msg.text || "[Media]", sender: msg.senderName || msg.senderUsername || "Unknown" };
           updateReplyPreview();
@@ -245,7 +363,23 @@
             replyDiv.style.background = "#f5f5f5";
             replyDiv.dataset.messageId = reply.id;
 
-            let replyContent = "";
+            let replyContent = `
+              <div class="username">
+                ${escapeHtml(reply.senderName || reply.senderUsername || "Unknown")}
+                ${reply.senderVerified ? '<span class="verified">[Verified]</span>' : ''}
+              </div>
+            `;
+
+            if (reply.replyTo) {
+              // Note: For simplicity, we're not fetching reply metadata here to avoid nested API calls
+              // You can extend this to fetch replyTo metadata if needed
+              replyContent += `
+                <div class="reply-preview">
+                  Reply to message ID ${reply.replyTo}
+                </div>
+              `;
+            }
+
             if (reply.fileUrl) {
               if (reply.issticker) {
                 replyContent += `<img src="${reply.fileUrl}" alt="Sticker" class="sticker">`;
@@ -267,7 +401,6 @@
             replyDiv.innerHTML = `
               ${replyContent || "[Media]"}
               <div class="meta">
-                ${reply.senderName || reply.senderUsername || "Unknown"} • 
                 ${new Date(reply.timestamp).toLocaleString()}
               </div>
             `;
@@ -284,7 +417,7 @@
             }
           });
         }
-      });
+      }
 
       if (append && wasAtBottom) {
         container.scrollTop = container.scrollHeight;
@@ -319,10 +452,32 @@
     const sendButton = document.getElementById("send-button");
     const fileInput = document.getElementById("file-input");
     const fileButton = document.getElementById("file-button");
+    const mediaPreview = document.getElementById("media-preview");
+    const mediaPreviewContainer = document.getElementById("media-preview-container");
 
     fileButton.addEventListener("click", () => {
       fileInput.click();
     });
+
+    fileInput.addEventListener("change", () => {
+      const file = fileInput.files[0];
+      if (file && file.type.startsWith("image")) {
+        const reader = new FileReader();
+        reader.onload = () => {
+          mediaPreview.src = reader.result;
+          mediaPreviewContainer.style.display = "block";
+        };
+        reader.readAsDataURL(file);
+      } else {
+        clearMediaPreview();
+      }
+    });
+
+    function clearMediaPreview() {
+      fileInput.value = "";
+      mediaPreview.src = "";
+      mediaPreviewContainer.style.display = "none";
+    }
 
     async function sendMessage() {
       const text = messageInput.value.trim();
@@ -361,7 +516,7 @@
         const data = await res.json();
         if (res.ok) {
           messageInput.value = "";
-          fileInput.value = "";
+          clearMediaPreview();
           replyingTo = null;
           updateReplyPreview();
         } else {
@@ -394,7 +549,7 @@
 
     // Reply preview
     function updateReplyPreview() {
-      const replyPreview = document.getElementById("reply-preview");
+      const replyPreview = document.getElementById("reply-input-preview");
       if (replyingTo) {
         replyPreview.style.display = "block";
         replyPreview.innerHTML = `
@@ -421,6 +576,7 @@
     }
 
     // Initial load
+    fetchRecipient();
     loadMessages();
   </script>
 </body>
