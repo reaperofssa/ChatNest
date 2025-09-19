@@ -310,7 +310,8 @@
             const replyText = replyData.text || "[Media]";
             content += `
               <div class="reply-preview">
-                ${escapeHtml(replyData.senderName || replyData.senderUsername || "Unknown")}: 
+                ${escapeHtml(replyData.senderName || replyData.senderUsername || "Unknown")}
+                ${replyData.senderVerified ? '<span class="verified">[Verified]</span>' : ''}: 
                 ${escapeHtml(replyText.slice(0, 50))}${replyText.length > 50 ? "..." : ""}
               </div>
             `;
@@ -323,7 +324,7 @@
             content += `<img src="${msg.fileUrl}" alt="Sticker" class="sticker">`;
           } else if (msg.fileType?.startsWith("image")) {
             content += `<img src="${msg.fileUrl}" alt="Image">`;
-          } else if (msg.fileType?.startsWith("video")) {
+ =          } else if (msg.fileType?.startsWith("video")) {
             content += `<video controls src="${msg.fileUrl}"></video>`;
           } else if (msg.fileType?.startsWith("audio")) {
             content += `<audio controls src="${msg.fileUrl}"></audio>`;
@@ -371,8 +372,6 @@
             `;
 
             if (reply.replyTo) {
-              // Note: For simplicity, we're not fetching reply metadata here to avoid nested API calls
-              // You can extend this to fetch replyTo metadata if needed
               replyContent += `
                 <div class="reply-preview">
                   Reply to message ID ${reply.replyTo}
@@ -440,7 +439,7 @@
     socket.on("showTyping", ({ users }) => {
       const typingIndicator = document.getElementById("typing-indicator");
       if (users.length > 0) {
-        const names = users.map(u => u.name || u.username).join(", ");
+        const names = users.map(u => (u.name || u.username) + (u.verified ? ' [Verified]' : '')).join(", ");
         typingIndicator.textContent = `${names} ${users.length > 1 ? "are" : "is"} typing...`;
       } else {
         typingIndicator.textContent = "";
