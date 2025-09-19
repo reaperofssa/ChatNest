@@ -71,6 +71,28 @@
       background: rgba(15, 15, 35, 0.98);
     }
 
+    /* Added back button styling */
+    .back-button {
+      background: rgba(139, 92, 246, 0.2);
+      border: 1px solid rgba(139, 92, 246, 0.3);
+      color: white;
+      border-radius: 50%;
+      width: 40px;
+      height: 40px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      font-size: 18px;
+      margin-right: 12px;
+    }
+
+    .back-button:hover {
+      background: rgba(139, 92, 246, 0.4);
+      transform: scale(1.05);
+    }
+
     .header-left {
       display: flex;
       align-items: center;
@@ -177,17 +199,34 @@
       line-height: 1.4;
       font-size: 15px;
       animation: messageSlide 0.3s ease-out;
+      /* Added cursor pointer for reply functionality */
+      cursor: pointer;
+      transition: all 0.2s ease;
     }
 
-    @keyframes messageSlide {
-      from {
-        opacity: 0;
-        transform: translateY(10px);
-      }
-      to {
-        opacity: 1;
-        transform: translateY(0);
-      }
+    .message:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 6px 20px rgba(139, 92, 246, 0.15);
+    }
+
+    /* Added sender name styling */
+    .sender-name {
+      font-size: 12px;
+      font-weight: 600;
+      color: rgba(139, 92, 246, 0.8);
+      margin-bottom: 4px;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .sender-name.verified::after {
+      content: '';
+      width: 14px;
+      height: 14px;
+      background-image: url('/verified.png');
+      background-size: contain;
+      background-repeat: no-repeat;
     }
 
     .message.sent {
@@ -622,6 +661,35 @@
       font-weight: 600;
     }
 
+    /* Added reply indicator styling */
+    .reply-indicator {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      background: rgba(139, 92, 246, 0.9);
+      color: white;
+      padding: 12px 20px;
+      display: none;
+      align-items: center;
+      justify-content: space-between;
+      z-index: 1000;
+      backdrop-filter: blur(10px);
+    }
+
+    .reply-indicator.show {
+      display: flex;
+    }
+
+    .reply-cancel {
+      background: none;
+      border: none;
+      color: white;
+      font-size: 18px;
+      cursor: pointer;
+      padding: 4px;
+    }
+
     @media (max-width: 768px) {
       #header {
         padding: 16px;
@@ -663,9 +731,13 @@
   <div id="app">
     <!-- Made header clickable to navigate to info page -->
     <div id="header" onclick="navigateToInfo()">
+      <!-- Added back button -->
+      <button class="back-button" onclick="event.stopPropagation(); window.location.href='/chats.html'">
+        ←
+      </button>
       <div class="header-left">
         <div class="profile-pic" id="profile-pic">
-          <img id="profile-image" style="display: none;" alt="Profile">
+          <img id="profile-image" src="/placeholder.svg" alt="" style="display: none;">
           <span id="profile-initial">?</span>
         </div>
         <div class="user-info">
@@ -676,8 +748,18 @@
           <p id="user-status">Loading...</p>
         </div>
       </div>
-      <!-- Made three dots also navigate to info page -->
-      <button class="menu-button" onclick="event.stopPropagation(); navigateToInfo();">⋯</button>
+      <div class="header-right">
+        <button class="menu-button" onclick="event.stopPropagation(); navigateToInfo();">⋯</button>
+      </div>
+    </div>
+
+    <!-- Added reply indicator -->
+    <div id="reply-indicator" class="reply-indicator">
+      <div>
+        <strong>Replying to:</strong>
+        <span id="reply-preview-text"></span>
+      </div>
+      <button class="reply-cancel" onclick="cancelReply()">×</button>
     </div>
 
     <div id="messages">
@@ -748,6 +830,34 @@
 
     function navigateToInfo() {
       window.location.href = `/info/${recipientId}`;
+    }
+
+    function replyToMessage(messageId, messageText, senderName, fileUrl, fileType) {
+      replyingTo = messageId;
+      const replyIndicator = document.getElementById('reply-indicator');
+      const replyPreviewText = document.getElementById('reply-preview-text');
+      
+      let previewText = '';
+      if (fileUrl && fileType?.startsWith('image')) {
+        previewText = `${senderName}: 📷 Image`;
+      } else if (fileUrl && fileType?.startsWith('video')) {
+        previewText = `${senderName}: 🎥 Video`;
+      } else if (fileUrl && fileType?.startsWith('audio')) {
+        previewText = `${senderName}: 🎵 Audio`;
+      } else {
+        previewText = `${senderName}: ${messageText?.slice(0, 50) || 'Message'}`;
+      }
+      
+      replyPreviewText.textContent = previewText;
+      replyIndicator.classList.add('show');
+      
+      // Focus message input
+      document.getElementById('message-input').focus();
+    }
+
+    function cancelReply() {
+      replyingTo = null;
+      document.getElementById('reply-indicator').classList.remove('show');
     }
 
     document.addEventListener('DOMContentLoaded', function() {
@@ -880,14 +990,18 @@
 
     function setupSocketListeners() {
       socket.on("newMessage", (msg) => {
-        console.log("New message received:", msg);
-        document.getElementById("no-messages").style.display = "none";
-        renderMessages([msg], true);
+        console.log("[v0] Received new message via WebSocket:", msg);
         
-        // Update last seen for sender
-        localStorage.setItem(`lastSeen_${msg.senderId}`, new Date().toISOString());
-        if (msg.senderId == recipientId) {
-          updateOnlineStatus();
+        // Add to messages array
+        messages.push(msg);
+        
+        // Render immediately without reload
+        renderMessage(msg);
+        
+        // Update typing indicator
+        const typingIndicator = document.getElementById("typing-indicator");
+        if (typingIndicator.style.display === "flex") {
+          typingIndicator.style.display = "none";
         }
       });
 
