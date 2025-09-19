@@ -74,7 +74,7 @@ const userSchema = new mongoose.Schema({
   bio: { type: String, default: "" },
   authToken: { type: String, required: true, unique: true },
   premium: { type: Boolean, default: false },
-  verified: { type: Boolean, default: false },
+  verified: { type: Boolean, default: true },
   pnk: { type: Number, default: 5 },
   regdate: { type: Date, default: Date.now },
   logdate: { type: Date, default: Date.now },
