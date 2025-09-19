@@ -121,6 +121,9 @@
       border: 1px solid #ddd;
       border-radius: 4px;
       resize: none;
+      min-height: 40px;
+      max-height: 150px;
+      overflow-y: auto;
     }
     #send-button {
       padding: 8px 16px;
@@ -196,12 +199,17 @@
     }
     #stickers-container {
       display: none;
-      padding: 10px;
+      position: absolute;
       background: #f5f5f5;
+      border: 1px solid #ddd;
       border-radius: 4px;
+      padding: 10px;
       max-height: 100px;
       overflow-x: auto;
       white-space: nowrap;
+      z-index: 100;
+      width: 300px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.2);
     }
     #stickers-container img {
       max-width: 50px;
@@ -211,12 +219,19 @@
       display: inline-block;
     }
     #stickers-toggle {
-      padding: 8px 16px;
+      padding: 6px 12px;
       background: #6c757d;
       color: white;
       border: none;
       border-radius: 4px;
       cursor: pointer;
+      font-size: 0.9em;
+      position: relative;
+    }
+    #stickers-toggle::after {
+      content: '▼';
+      margin-left: 5px;
+      font-size: 0.8em;
     }
   </style>
 </head>
@@ -233,7 +248,10 @@
     <div id="input-container">
       <div id="reply-input-preview" style="display: none;"></div>
       <div id="stickers-container"></div>
-      <button id="stickers-toggle">My Stickers</button>
+      <div style="display: flex; gap: 10px; align-items: center;">
+        <button id="stickers-toggle">My Stickers</button>
+        <div style="flex: 1;"></div> <!-- Spacer -->
+      </div>
       <div id="media-preview-container">
         <img id="media-preview" src="" alt="Media Preview">
         <button onclick="clearMediaPreview()">X</button>
@@ -557,11 +575,20 @@
     async function sendSticker(url) {
       sendButton.disabled = true;
       try {
+        // Fetch the sticker image and convert to base64
+        const response = await fetch(url);
+        const blob = await response.blob();
+        const fileBase64 = await new Promise((resolve) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result.split(",")[1]);
+          reader.readAsDataURL(blob);
+        });
+
         const body = {
           authToken,
           text: "",
           replyTo: replyingTo ? replyingTo.id : null,
-          fileUrl: url,
+          fileBase64,
           fileType: "image/png",
           issticker: true
         };
@@ -612,7 +639,7 @@
         reader.onload = () => {
           mediaPreview.src = reader.result;
           mediaPreviewContainer.style.display = "flex";
-          isSticker = false; // Reset sticker flag
+          isSticker = false;
           createStickerButton.style.display = "inline-block";
         };
         reader.readAsDataURL(file);
@@ -623,11 +650,17 @@
 
     createStickerButton.addEventListener("click", () => {
       isSticker = true;
-      createStickerButton.style.display = "none"; // Hide after marking as sticker
+      createStickerButton.style.display = "none";
     });
 
     stickersToggle.addEventListener("click", () => {
-      stickersContainer.style.display = stickersContainer.style.display === "none" ? "block" : "none";
+      const isVisible = stickersContainer.style.display === "block";
+      stickersContainer.style.display = isVisible ? "none" : "block";
+      if (!isVisible) {
+        const rect = stickersToggle.getBoundingClientRect();
+        stickersContainer.style.top = `${rect.bottom + window.scrollY}px`;
+        stickersContainer.style.left = `${rect.left + window.scrollX}px`;
+      }
     });
 
     function clearMediaPreview() {
@@ -646,7 +679,6 @@
       try {
         let fileBase64 = null;
         let fileType = null;
-        let fileUrl = null;
 
         if (file) {
           fileBase64 = await new Promise((resolve) => {
@@ -700,11 +732,16 @@
       if (e.key === "Enter" && !e.shiftKey) {
         e.preventDefault();
         sendMessage();
+      } else if (e.key === "Enter" && e.shiftKey) {
+        // Allow default behavior (line break)
       }
     });
 
-    // Typing detection
+    // Dynamic textarea resizing
     messageInput.addEventListener("input", () => {
+      messageInput.style.height = "auto";
+      messageInput.style.height = `${Math.min(messageInput.scrollHeight, 150)}px`;
+
       socket.emit("typing", { room: `user_${recipientId}`, authToken });
       clearTimeout(typingTimeout);
       typingTimeout = setTimeout(() => {
