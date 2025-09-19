@@ -41,6 +41,20 @@
     .meta {
       font-size: 0.8em;
       color: #666;
+      margin-top: 4px;
+    }
+    img, video {
+      max-width: 100%;
+      border-radius: 6px;
+      margin-top: 5px;
+    }
+    .sticker {
+      max-width: 100px; /* Smaller size for stickers */
+      max-height: 100px;
+    }
+    audio {
+      width: 100%;
+      margin-top: 5px;
     }
   </style>
 </head>
@@ -80,8 +94,6 @@
       const container = document.getElementById("messages");
       container.innerHTML = "";
 
-      const authToken = localStorage.getItem("authToken");
-
       messages.reverse().forEach(msg => {
         const div = document.createElement("div");
         div.classList.add("message");
@@ -90,8 +102,27 @@
         const isSender = (msg.senderId !== Number(recipientId));
         div.classList.add(isSender ? "sent" : "received");
 
+        // Message content
+        let content = "";
+        if (msg.text) {
+          content += `<div>${msg.text}</div>`;
+        }
+        if (msg.fileUrl) {
+          if (msg.issticker) {
+            content += `<img src="${msg.fileUrl}" alt="Sticker" class="sticker">`;
+          } else if (msg.fileType?.startsWith("image")) {
+            content += `<img src="${msg.fileUrl}" alt="Image">`;
+          } else if (msg.fileType?.startsWith("video")) {
+            content += `<video controls src="${msg.fileUrl}"></video>`;
+          } else if (msg.fileType?.startsWith("audio")) {
+            content += `<audio controls src="${msg.fileUrl}"></audio>`;
+          } else {
+            content += `<a href="${msg.fileUrl}" target="_blank">Download file</a>`;
+          }
+        }
+
         div.innerHTML = `
-          <div>${msg.text || "[Media]"}</div>
+          ${content || "[Media]"}
           <div class="meta">
             ${msg.senderName || msg.senderUsername || "Unknown"} • 
             ${new Date(msg.timestamp).toLocaleString()}
@@ -100,7 +131,7 @@
 
         container.appendChild(div);
 
-        // Add replies inline (optional)
+        // Add replies inline
         if (msg.replies && msg.replies.length > 0) {
           msg.replies.forEach(reply => {
             const replyDiv = document.createElement("div");
@@ -108,13 +139,32 @@
             replyDiv.style.marginLeft = "30px";
             replyDiv.style.background = "#f5f5f5";
 
+            let replyContent = "";
+            if (reply.text) {
+              replyContent += `<div>${reply.text}</div>`;
+            }
+            if (reply.fileUrl) {
+              if (reply.issticker) {
+                replyContent += `<img src="${reply.fileUrl}" alt="Sticker" class="sticker">`;
+              } else if (reply.fileType?.startsWith("image")) {
+                replyContent += `<img src="${reply.fileUrl}" alt="Image">`;
+              } else if (reply.fileType?.startsWith("video")) {
+                replyContent += `<video controls src="${reply.fileUrl}"></video>`;
+              } else if (reply.fileType?.startsWith("audio")) {
+                replyContent += `<audio controls src="${reply.fileUrl}"></audio>`;
+              } else {
+                replyContent += `<a href="${reply.fileUrl}" target="_blank">Download file</a>`;
+              }
+            }
+
             replyDiv.innerHTML = `
-              <div>${reply.text || "[Media]"}</div>
+              ${replyContent || "[Media]"}
               <div class="meta">
                 ${reply.senderName || reply.senderUsername || "Unknown"} • 
                 ${new Date(reply.timestamp).toLocaleString()}
               </div>
             `;
+
             container.appendChild(replyDiv);
           });
         }
