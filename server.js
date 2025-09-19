@@ -755,10 +755,22 @@ app.get("/messages", async (req, res) => {
 app.get("/messages/:recipientId", async (req, res) => {
   try {
     const { recipientId } = req.params;
-    const { userid, limit = 50, from, to } = req.query;
+    const { authToken, limit = 50, from, to } = req.query;
 
-    if (!userid) return res.status(400).json({ error: "userid is required" });
-    if (!recipientId) return res.status(400).json({ error: "recipientId is required" });
+    if (!authToken) {
+      return res.status(400).json({ error: "authToken is required" });
+    }
+    if (!recipientId) {
+      return res.status(400).json({ error: "recipientId is required" });
+    }
+
+    // Find the user from the token
+    const user = await User.findOne({ authToken });
+    if (!user) {
+      return res.status(401).json({ error: "Invalid authToken" });
+    }
+
+    const userid = user.id;
 
     const query = {
       $or: [
