@@ -98,6 +98,14 @@
       font-size: 0.9em;
       margin-bottom: 5px;
       border-left: 3px solid #007bff;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+    .reply-preview img, .reply-preview video {
+      max-width: 40px;
+      max-height: 40px;
+      border-radius: 4px;
     }
     #input-container {
       padding: 10px;
@@ -137,6 +145,14 @@
       border-radius: 4px;
       cursor: pointer;
     }
+    #create-sticker-button {
+      padding: 8px 16px;
+      background: #ff9800;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }
     #media-preview {
       max-width: 100px;
       max-height: 100px;
@@ -148,6 +164,9 @@
       padding: 5px;
       background: #f5f5f5;
       border-radius: 4px;
+      display: flex;
+      align-items: center;
+      gap: 5px;
     }
     #media-preview-container button {
       background: none;
@@ -175,6 +194,30 @@
       color: #ff0000;
       cursor: pointer;
     }
+    #stickers-container {
+      display: none;
+      padding: 10px;
+      background: #f5f5f5;
+      border-radius: 4px;
+      max-height: 100px;
+      overflow-x: auto;
+      white-space: nowrap;
+    }
+    #stickers-container img {
+      max-width: 50px;
+      max-height: 50px;
+      margin-right: 5px;
+      cursor: pointer;
+      display: inline-block;
+    }
+    #stickers-toggle {
+      padding: 8px 16px;
+      background: #6c757d;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }
   </style>
 </head>
 <body>
@@ -189,9 +232,12 @@
     <div id="typing-indicator"></div>
     <div id="input-container">
       <div id="reply-input-preview" style="display: none;"></div>
+      <div id="stickers-container"></div>
+      <button id="stickers-toggle">My Stickers</button>
       <div id="media-preview-container">
         <img id="media-preview" src="" alt="Media Preview">
         <button onclick="clearMediaPreview()">X</button>
+        <button id="create-sticker-button">Create Sticker</button>
       </div>
       <div style="display: flex; gap: 10px;">
         <textarea id="message-input" placeholder="Type a message..." rows="2"></textarea>
@@ -210,6 +256,7 @@
     let replyingTo = null;
     let typingTimeout = null;
     let recipientData = null;
+    let isSticker = false;
 
     // Get recipientId and authToken
     const params = window.location.pathname.split("/");
@@ -330,9 +377,22 @@
         if (msg.replyTo) {
           const replyData = await fetchMessageMetadata(msg.replyTo);
           if (replyData) {
-            const replyText = replyData.text || "[Media]";
+            const replyText = replyData.text || "";
+            let mediaPreview = "";
+            if (replyData.fileUrl) {
+              if (replyData.fileType?.startsWith("image") || replyData.issticker) {
+                mediaPreview = `<img src="${replyData.fileUrl}" alt="Media">`;
+              } else if (replyData.fileType?.startsWith("video")) {
+                mediaPreview = `<video src="${replyData.fileUrl}"></video>`;
+              } else if (replyData.fileType?.startsWith("audio")) {
+                mediaPreview = `<span>[Audio]</span>`;
+              } else {
+                mediaPreview = `<span>[File]</span>`;
+              }
+            }
             content += `
               <div class="reply-preview">
+                ${mediaPreview}
                 ${escapeHtml(replyData.senderName || replyData.senderUsername || "Unknown")}
                 ${replyData.senderVerified ? '<span class="verified">[Verified]</span>' : ''}: 
                 ${escapeHtml(replyText.slice(0, 50))}${replyText.length > 50 ? "..." : ""}
@@ -469,6 +529,67 @@
       }
     });
 
+    // Load stickers from localStorage
+    function loadStickers() {
+      const stickers = JSON.parse(localStorage.getItem("stickers") || "[]");
+      const container = document.getElementById("stickers-container");
+      container.innerHTML = "";
+      stickers.forEach(url => {
+        const img = document.createElement("img");
+        img.src = url;
+        img.alt = "Sticker";
+        img.addEventListener("click", () => sendSticker(url));
+        container.appendChild(img);
+      });
+    }
+
+    // Save sticker to localStorage
+    function saveSticker(url) {
+      const stickers = JSON.parse(localStorage.getItem("stickers") || "[]");
+      if (!stickers.includes(url)) {
+        stickers.push(url);
+        localStorage.setItem("stickers", JSON.stringify(stickers));
+        loadStickers();
+      }
+    }
+
+    // Send sticker
+    async function sendSticker(url) {
+      sendButton.disabled = true;
+      try {
+        const body = {
+          authToken,
+          text: "",
+          replyTo: replyingTo ? replyingTo.id : null,
+          fileUrl: url,
+          fileType: "image/png",
+          issticker: true
+        };
+
+        console.log("Sending sticker:", body);
+        const res = await fetch(`/message/${recipientId}`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body)
+        });
+
+        const data = await res.json();
+        if (res.ok) {
+          console.log("Sticker sent successfully:", data);
+          replyingTo = null;
+          updateReplyPreview();
+        } else {
+          console.error("Error sending sticker:", data.error);
+          alert(data.error || "Failed to send sticker");
+        }
+      } catch (err) {
+        console.error("Error sending sticker:", err);
+        alert("Error sending sticker");
+      } finally {
+        sendButton.disabled = false;
+      }
+    }
+
     // Send message
     const messageInput = document.getElementById("message-input");
     const sendButton = document.getElementById("send-button");
@@ -476,6 +597,9 @@
     const fileButton = document.getElementById("file-button");
     const mediaPreview = document.getElementById("media-preview");
     const mediaPreviewContainer = document.getElementById("media-preview-container");
+    const createStickerButton = document.getElementById("create-sticker-button");
+    const stickersContainer = document.getElementById("stickers-container");
+    const stickersToggle = document.getElementById("stickers-toggle");
 
     fileButton.addEventListener("click", () => {
       fileInput.click();
@@ -487,7 +611,9 @@
         const reader = new FileReader();
         reader.onload = () => {
           mediaPreview.src = reader.result;
-          mediaPreviewContainer.style.display = "block";
+          mediaPreviewContainer.style.display = "flex";
+          isSticker = false; // Reset sticker flag
+          createStickerButton.style.display = "inline-block";
         };
         reader.readAsDataURL(file);
       } else {
@@ -495,21 +621,32 @@
       }
     });
 
+    createStickerButton.addEventListener("click", () => {
+      isSticker = true;
+      createStickerButton.style.display = "none"; // Hide after marking as sticker
+    });
+
+    stickersToggle.addEventListener("click", () => {
+      stickersContainer.style.display = stickersContainer.style.display === "none" ? "block" : "none";
+    });
+
     function clearMediaPreview() {
       fileInput.value = "";
       mediaPreview.src = "";
       mediaPreviewContainer.style.display = "none";
+      createStickerButton.style.display = "none";
+      isSticker = false;
     }
 
     async function sendMessage() {
       const text = messageInput.value.trim();
       const file = fileInput.files[0];
-      const issticker = file && file.type.startsWith("image") && confirm("Send as sticker?");
       sendButton.disabled = true;
 
       try {
         let fileBase64 = null;
         let fileType = null;
+        let fileUrl = null;
 
         if (file) {
           fileBase64 = await new Promise((resolve) => {
@@ -526,7 +663,7 @@
           replyTo: replyingTo ? replyingTo.id : null,
           fileBase64,
           fileType,
-          issticker
+          issticker: isSticker
         };
 
         console.log("Sending message:", body);
@@ -539,6 +676,9 @@
         const data = await res.json();
         if (res.ok) {
           console.log("Message sent successfully:", data);
+          if (isSticker && data.data.fileUrl) {
+            saveSticker(data.data.fileUrl);
+          }
           messageInput.value = "";
           clearMediaPreview();
           replyingTo = null;
@@ -603,6 +743,7 @@
     // Initial load
     fetchRecipient();
     loadMessages();
+    loadStickers();
   </script>
 </body>
 </html>
