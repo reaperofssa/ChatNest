@@ -29,6 +29,7 @@
       border-radius: 6px;
       max-width: 70%;
       word-wrap: break-word;
+      cursor: pointer; /* Clickable for replies */
     }
     .sent {
       background: #dcf8c6;
@@ -57,33 +58,122 @@
       margin-top: 5px;
     }
     .message-text {
-      white-space: pre-wrap; /* Preserves whitespace and line breaks */
-      margin-top: 5px; /* Space above caption */
+      white-space: pre-wrap;
+      margin-top: 5px;
+    }
+    #input-container {
+      padding: 10px;
+      background: white;
+      border-top: 1px solid #ddd;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    #message-input {
+      flex: 1;
+      padding: 8px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      resize: none;
+    }
+    #send-button {
+      padding: 8px 16px;
+      background: #007bff;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    #send-button:disabled {
+      background: #cccccc;
+      cursor: not-allowed;
+    }
+    #file-input {
+      display: none;
+    }
+    #file-button {
+      padding: 8px 16px;
+      background: #28a745;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    #typing-indicator {
+      font-size: 0.9em;
+      color: #666;
+      padding: 5px 15px;
+    }
+    #reply-preview {
+      background: #f5f5f5;
+      padding: 5px 10px;
+      border-radius: 4px;
+      font-size: 0.9em;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    #reply-preview button {
+      background: none;
+      border: none;
+      color: #ff0000;
+      cursor: pointer;
     }
   </style>
 </head>
 <body>
   <div id="chat-container">
     <div id="messages"></div>
+    <div id="typing-indicator"></div>
+    <div id="input-container">
+      <div id="reply-preview" style="display: none;"></div>
+      <div style="display: flex; gap: 10px;">
+        <textarea id="message-input" placeholder="Type a message..." rows="2"></textarea>
+        <button id="send-button">Send</button>
+        <button id="file-button">📎</button>
+        <input type="file" id="file-input" accept="image/*,video/*,audio/*">
+      </div>
+    </div>
   </div>
 
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.5.0/socket.io.min.js"></script>
   <script>
-    async function loadMessages() {
-      const params = window.location.pathname.split("/"); 
-      const recipientId = params[params.length - 1]; // /chat/:id → get :id
-      const authToken = localStorage.getItem("authToken");
+    const socket = io();
+    let isLoading = false;
+    let earliestTimestamp = null;
+    let replyingTo = null;
+    let typingTimeout = null;
 
-      if (!authToken) {
-        alert("No authToken found in localStorage. Please log in first.");
-        return;
-      }
+    // Get recipientId and authToken
+    const params = window.location.pathname.split("/");
+    const recipientId = params[params.length - 1];
+    const authToken = localStorage.getItem("authToken");
+
+    if (!authToken) {
+      alert("No authToken found in localStorage. Please log in first.");
+      window.location.href = "/login";
+    }
+
+    // Join user room
+    socket.emit("joinUserRoom", authToken);
+
+    // Load initial messages
+    async function loadMessages(before = null) {
+      if (isLoading) return;
+      isLoading = true;
 
       try {
-        const res = await fetch(`/messages/${recipientId}?authToken=${encodeURIComponent(authToken)}&limit=50`);
+        const url = before 
+          ? `/messages/${recipientId}?authToken=${encodeURIComponent(authToken)}&limit=20&before=${encodeURIComponent(before)}`
+          : `/messages/${recipientId}?authToken=${encodeURIComponent(authToken)}&limit=20`;
+        const res = await fetch(url);
         const data = await res.json();
 
         if (res.ok) {
-          renderMessages(data, recipientId);
+          renderMessages(data, recipientId, !before); // Append for initial load, prepend for scroll
+          if (data.length > 0) {
+            earliestTimestamp = data[data.length - 1].timestamp; // Update earliest timestamp
+          }
         } else {
           console.error("Error:", data.error);
           alert(data.error || "Failed to load messages");
@@ -91,22 +181,22 @@
       } catch (err) {
         console.error("Request failed:", err);
         alert("Error fetching messages");
+      } finally {
+        isLoading = false;
       }
     }
 
-    function renderMessages(messages, recipientId) {
+    function renderMessages(messages, recipientId, append = true) {
       const container = document.getElementById("messages");
-      container.innerHTML = "";
+      const wasAtBottom = container.scrollTop + container.clientHeight >= container.scrollHeight - 10;
 
-      messages.reverse().forEach(msg => {
+      messages.forEach(msg => {
         const div = document.createElement("div");
         div.classList.add("message");
-
-        // Check if current user is sender
+        div.dataset.messageId = msg.id; // For reply functionality
         const isSender = (msg.senderId !== Number(recipientId));
         div.classList.add(isSender ? "sent" : "received");
 
-        // Message content: render media first, then text (caption) below
         let content = "";
         if (msg.fileUrl) {
           if (msg.issticker) {
@@ -122,8 +212,7 @@
           }
         }
         if (msg.text) {
-          // Replace \n with <br> for line breaks
-          const formattedText = msg.text.replace(/\n/g, "<br>");
+          const formattedText = escapeHtml(msg.text).replace(/\n/g, "<br>");
           content += `<div class="message-text">${formattedText}</div>`;
         }
 
@@ -135,15 +224,26 @@
           </div>
         `;
 
-        container.appendChild(div);
+        // Click to reply
+        div.addEventListener("click", () => {
+          replyingTo = { id: msg.id, text: msg.text || "[Media]", sender: msg.senderName || msg.senderUsername || "Unknown" };
+          updateReplyPreview();
+        });
 
-        // Add replies inline
+        if (append) {
+          container.appendChild(div);
+        } else {
+          container.insertBefore(div, container.firstChild);
+        }
+
+        // Render replies
         if (msg.replies && msg.replies.length > 0) {
           msg.replies.forEach(reply => {
             const replyDiv = document.createElement("div");
-            replyDiv.classList.add("message", "received"); 
+            replyDiv.classList.add("message", "received");
             replyDiv.style.marginLeft = "30px";
             replyDiv.style.background = "#f5f5f5";
+            replyDiv.dataset.messageId = reply.id;
 
             let replyContent = "";
             if (reply.fileUrl) {
@@ -160,8 +260,7 @@
               }
             }
             if (reply.text) {
-              // Replace \n with <br> for line breaks
-              const formattedReplyText = reply.text.replace(/\n/g, "<br>");
+              const formattedReplyText = escapeHtml(reply.text).replace(/\n/g, "<br>");
               replyContent += `<div class="message-text">${formattedReplyText}</div>`;
             }
 
@@ -173,15 +272,155 @@
               </div>
             `;
 
-            container.appendChild(replyDiv);
+            replyDiv.addEventListener("click", () => {
+              replyingTo = { id: reply.id, text: reply.text || "[Media]", sender: reply.senderName || reply.senderUsername || "Unknown" };
+              updateReplyPreview();
+            });
+
+            if (append) {
+              container.appendChild(replyDiv);
+            } else {
+              container.insertBefore(replyDiv, container.firstChild);
+            }
           });
         }
       });
 
-      // Auto-scroll to bottom
-      container.scrollTop = container.scrollHeight;
+      if (append && wasAtBottom) {
+        container.scrollTop = container.scrollHeight;
+      }
     }
 
+    // Infinite scroll
+    document.getElementById("messages").addEventListener("scroll", () => {
+      if (document.getElementById("messages").scrollTop < 50 && earliestTimestamp) {
+        loadMessages(earliestTimestamp);
+      }
+    });
+
+    // WebSocket new message
+    socket.on("newMessage", (msg) => {
+      renderMessages([msg], recipientId, true);
+    });
+
+    // Typing indicator
+    socket.on("showTyping", ({ users }) => {
+      const typingIndicator = document.getElementById("typing-indicator");
+      if (users.length > 0) {
+        const names = users.map(u => u.name || u.username).join(", ");
+        typingIndicator.textContent = `${names} ${users.length > 1 ? "are" : "is"} typing...`;
+      } else {
+        typingIndicator.textContent = "";
+      }
+    });
+
+    // Send message
+    const messageInput = document.getElementById("message-input");
+    const sendButton = document.getElementById("send-button");
+    const fileInput = document.getElementById("file-input");
+    const fileButton = document.getElementById("file-button");
+
+    fileButton.addEventListener("click", () => {
+      fileInput.click();
+    });
+
+    async function sendMessage() {
+      const text = messageInput.value.trim();
+      const file = fileInput.files[0];
+      const issticker = file && file.type.startsWith("image") && confirm("Send as sticker?");
+      sendButton.disabled = true;
+
+      try {
+        let fileBase64 = null;
+        let fileType = null;
+
+        if (file) {
+          fileBase64 = await new Promise((resolve) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result.split(",")[1]);
+            reader.readAsDataURL(file);
+          });
+          fileType = file.type;
+        }
+
+        const body = {
+          authToken,
+          text: text || "",
+          replyTo: replyingTo ? replyingTo.id : null,
+          fileBase64,
+          fileType,
+          issticker
+        };
+
+        const res = await fetch(`/message/${recipientId}`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body)
+        });
+
+        const data = await res.json();
+        if (res.ok) {
+          messageInput.value = "";
+          fileInput.value = "";
+          replyingTo = null;
+          updateReplyPreview();
+        } else {
+          alert(data.error || "Failed to send message");
+        }
+      } catch (err) {
+        console.error("Error sending message:", err);
+        alert("Error sending message");
+      } finally {
+        sendButton.disabled = false;
+      }
+    }
+
+    sendButton.addEventListener("click", sendMessage);
+    messageInput.addEventListener("keypress", (e) => {
+      if (e.key === "Enter" && !e.shiftKey) {
+        e.preventDefault();
+        sendMessage();
+      }
+    });
+
+    // Typing detection
+    messageInput.addEventListener("input", () => {
+      socket.emit("typing", { room: `user_${recipientId}`, authToken });
+      clearTimeout(typingTimeout);
+      typingTimeout = setTimeout(() => {
+        socket.emit("stopTyping", { room: `user_${recipientId}`, authToken });
+      }, 5000);
+    });
+
+    // Reply preview
+    function updateReplyPreview() {
+      const replyPreview = document.getElementById("reply-preview");
+      if (replyingTo) {
+        replyPreview.style.display = "block";
+        replyPreview.innerHTML = `
+          Replying to ${escapeHtml(replyingTo.sender)}: ${escapeHtml(replyingTo.text.slice(0, 50))}...
+          <button onclick="cancelReply()">X</button>
+        `;
+      } else {
+        replyPreview.style.display = "none";
+        replyPreview.innerHTML = "";
+      }
+    }
+
+    function cancelReply() {
+      replyingTo = null;
+      updateReplyPreview();
+    }
+
+    // HTML escape function
+    function escapeHtml(text) {
+      return text
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;");
+    }
+
+    // Initial load
     loadMessages();
   </script>
 </body>
