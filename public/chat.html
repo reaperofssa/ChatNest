@@ -13,14 +13,14 @@
 
     body {
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-      background: linear-gradient(135deg, #0a0a0a 0%, #1a1a1a 50%, #2a2a2a 100%);
+      background: #0a0a0a;
       height: 100vh;
       overflow: hidden;
       color: white;
       position: relative;
     }
 
-    /* Updated background shapes with black/grey theme */
+    /* Decorative background */
     .background-shapes {
       position: fixed;
       top: 0;
@@ -29,60 +29,48 @@
       height: 100%;
       pointer-events: none;
       z-index: 0;
+      opacity: 0.03;
     }
 
     .shape {
       position: absolute;
       border-radius: 50%;
-      opacity: 0.08;
+      background: radial-gradient(circle, #666666, transparent);
       animation: float 25s infinite linear;
     }
 
     .shape:nth-child(1) {
       width: 300px;
       height: 300px;
-      background: radial-gradient(circle, #404040, transparent);
-      top: 10%;
-      left: 10%;
+      top: 5%;
+      left: -10%;
       animation-delay: 0s;
     }
 
     .shape:nth-child(2) {
       width: 200px;
       height: 200px;
-      background: radial-gradient(circle, #505050, transparent);
-      top: 60%;
-      right: 20%;
+      top: 40%;
+      right: -5%;
       animation-delay: -8s;
     }
 
     .shape:nth-child(3) {
       width: 150px;
       height: 150px;
-      background: radial-gradient(circle, #606060, transparent);
-      bottom: 20%;
-      left: 30%;
-      animation-delay: -15s;
-    }
-
-    .shape:nth-child(4) {
-      width: 180px;
-      height: 180px;
-      background: radial-gradient(circle, #454545, transparent);
-      top: 30%;
-      right: 40%;
-      animation-delay: -20s;
+      bottom: 10%;
+      left: 20%;
+      animation-delay: -16s;
     }
 
     @keyframes float {
-      0% { transform: translateY(0px) rotate(0deg) scale(1); }
-      25% { transform: translateY(-30px) rotate(90deg) scale(1.1); }
-      50% { transform: translateY(0px) rotate(180deg) scale(1); }
-      75% { transform: translateY(30px) rotate(270deg) scale(0.9); }
-      100% { transform: translateY(0px) rotate(360deg) scale(1); }
+      0% { transform: translateY(0px) rotate(0deg); }
+      25% { transform: translateY(-30px) rotate(90deg); }
+      50% { transform: translateY(0px) rotate(180deg); }
+      75% { transform: translateY(30px) rotate(270deg); }
+      100% { transform: translateY(0px) rotate(360deg); }
     }
 
-    /* Mobile-first chat container */
     #chat-container {
       width: 100vw;
       height: 100vh;
@@ -90,280 +78,204 @@
       flex-direction: column;
       position: relative;
       z-index: 1;
+      background: linear-gradient(180deg, #0a0a0a 0%, #1a1a1a 100%);
     }
 
-    /* Updated header with back button and menu */
+    /* Enhanced header with profile info */
     #header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 16px 20px;
-      background: rgba(20, 20, 20, 0.95);
-      backdrop-filter: blur(20px);
+      background: rgba(26, 26, 26, 0.95);
+      backdrop-filter: blur(10px);
       border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-      position: sticky;
-      top: 0;
-      z-index: 100;
-      min-height: 80px;
-    }
-
-    .header-left {
+      padding: 12px 16px;
       display: flex;
       align-items: center;
-      gap: 16px;
+      gap: 12px;
+      min-height: 70px;
+      position: relative;
     }
 
-    .back-button {
-      background: none;
+    #back-button {
+      background: transparent;
       border: none;
       color: #ffffff;
       font-size: 24px;
       cursor: pointer;
       padding: 8px;
       border-radius: 50%;
-      transition: all 0.3s ease;
+      transition: all 0.2s ease;
+      width: 40px;
+      height: 40px;
       display: flex;
       align-items: center;
       justify-content: center;
-      width: 40px;
-      height: 40px;
     }
 
-    .back-button:hover {
+    #back-button:hover {
       background: rgba(255, 255, 255, 0.1);
-      transform: scale(1.1);
     }
 
-    .recipient-profile {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-    }
-
-    .recipient-avatar {
-      width: 48px;
-      height: 48px;
+    #profile-picture {
+      width: 44px;
+      height: 44px;
       border-radius: 50%;
       object-fit: cover;
-      border: 2px solid rgba(255, 255, 255, 0.2);
+      background: #333333;
+      border: 2px solid rgba(255, 255, 255, 0.1);
     }
 
-    .recipient-info {
+    #user-info {
+      flex: 1;
       display: flex;
       flex-direction: column;
-      gap: 2px;
+      justify-content: center;
+      line-height: 1.2;
     }
 
-    .recipient-name {
-      font-size: 18px;
-      font-weight: 600;
+    #user-name {
       color: #ffffff;
+      font-size: 16px;
+      font-weight: 600;
       display: flex;
       align-items: center;
       gap: 6px;
     }
 
-    .recipient-username {
-      font-size: 14px;
-      color: #888888;
+    #user-username {
+      color: #8e8e93;
+      font-size: 13px;
+      margin-top: 1px;
     }
 
-    .recipient-status {
+    #user-status {
+      color: #8e8e93;
       font-size: 12px;
-      color: #666666;
-    }
-
-    .recipient-status.online {
-      color: #4CAF50;
-    }
-
-    .recipient-status.away {
-      color: #FF9800;
-    }
-
-    .recipient-status.offline {
-      color: #666666;
-    }
-
-    .header-right {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-
-    .menu-button {
-      background: none;
-      border: none;
-      color: #ffffff;
-      font-size: 20px;
-      cursor: pointer;
-      padding: 8px;
-      border-radius: 50%;
-      transition: all 0.3s ease;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      width: 40px;
-      height: 40px;
-    }
-
-    .menu-button:hover {
-      background: rgba(255, 255, 255, 0.1);
-      transform: scale(1.1);
+      margin-top: 1px;
     }
 
     .verified-badge {
       width: 16px;
       height: 16px;
-      margin-left: 4px;
-      vertical-align: middle;
+      background: url('/verified.png') no-repeat center;
+      background-size: contain;
     }
 
-    /* Mobile-optimized messages container with liquid glass */
+    .verified-icon {
+      color: #4A90E2;
+      font-size: 16px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 16px;
+      height: 16px;
+    }
+
     #messages {
       flex: 1;
-      padding: 20px 16px;
+      padding: 16px;
       overflow-y: auto;
-      background: rgba(0, 0, 0, 0.15);
-      backdrop-filter: blur(20px);
-      -webkit-backdrop-filter: blur(20px);
-      scrollbar-width: thin;
-      scrollbar-color: rgba(128, 128, 128, 0.3) transparent;
+      background: transparent;
+      scrollbar-width: none;
+      -ms-overflow-style: none;
     }
 
     #messages::-webkit-scrollbar {
-      width: 4px;
-    }
-
-    #messages::-webkit-scrollbar-track {
-      background: transparent;
-    }
-
-    #messages::-webkit-scrollbar-thumb {
-      background: rgba(128, 128, 128, 0.3);
-      border-radius: 2px;
+      display: none;
     }
 
     #no-messages {
       text-align: center;
-      color: rgba(255, 255, 255, 0.6);
-      padding: 60px 20px;
+      color: rgba(142, 142, 147, 0.8);
+      padding: 40px 20px;
       font-size: 16px;
       display: none;
     }
 
-    /* Liquid glass message bubbles - mobile optimized */
+    /* Liquid glass message bubbles */
     .message {
       margin-bottom: 12px;
-      padding: 14px 18px;
-      border-radius: 18px;
+      padding: 12px 16px;
+      border-radius: 20px;
       max-width: 85%;
       word-wrap: break-word;
       cursor: pointer;
-      backdrop-filter: blur(25px);
-      -webkit-backdrop-filter: blur(25px);
-      border: 1px solid rgba(255, 255, 255, 0.08);
-      transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
       position: relative;
+      transition: all 0.3s cubic-bezier(0.4, 0.0, 0.2, 1);
+      backdrop-filter: blur(15px);
+      -webkit-backdrop-filter: blur(15px);
+      border: 1px solid rgba(255, 255, 255, 0.05);
       overflow: hidden;
-      font-size: 16px;
-      line-height: 1.4;
     }
 
-    /* Liquid glass effect with slime-like movement */
+    /* Liquid deformation effect */
     .message::before {
       content: '';
       position: absolute;
-      top: -50%;
-      left: -50%;
-      width: 200%;
-      height: 200%;
-      background: radial-gradient(circle, rgba(255, 255, 255, 0.05), transparent 70%);
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: radial-gradient(circle at var(--mouse-x, 50%) var(--mouse-y, 50%), 
+                  rgba(255, 255, 255, 0.05) 0%, transparent 50%);
       opacity: 0;
-      transition: all 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+      transition: opacity 0.3s ease;
       pointer-events: none;
-      transform: scale(0.5);
+      border-radius: 20px;
     }
 
     .message:hover::before {
       opacity: 1;
-      transform: scale(1) rotate(180deg);
     }
 
     .message:hover {
-      transform: translateY(-2px) scale(1.02);
-      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
-      border-color: rgba(255, 255, 255, 0.15);
+      transform: translateY(-1px) scale(1.002);
+      border-radius: 18px;
+    }
+
+    .message:active {
+      transform: translateY(1px) scale(0.998);
+      border-radius: 22px;
     }
 
     .sent {
-      background: rgba(64, 64, 64, 0.25);
+      background: rgba(60, 60, 67, 0.3);
       align-self: flex-end;
       margin-left: auto;
-      border: 1px solid rgba(128, 128, 128, 0.2);
+      border-bottom-right-radius: 8px;
     }
 
     .received {
-      background: rgba(32, 32, 32, 0.25);
+      background: rgba(44, 44, 46, 0.4);
       align-self: flex-start;
-      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-bottom-left-radius: 8px;
     }
 
-    /* Updated verified message styling */
     .verified-message {
-      border: 1px solid rgba(128, 128, 128, 0.4) !important;
-      background: rgba(96, 96, 96, 0.2) !important;
-      box-shadow: 0 0 20px rgba(128, 128, 128, 0.2);
+      border: 1px solid rgba(74, 144, 226, 0.3);
+      background: rgba(74, 144, 226, 0.1);
     }
 
     .message-text {
       color: #ffffff;
+      font-size: 16px;
+      line-height: 1.4;
       white-space: pre-wrap;
-      margin-top: 4px;
-      line-height: 1.5;
-    }
-
-    .verified-message::after {
-      content: '';
-      position: absolute;
-      top: -1px;
-      left: -1px;
-      right: -1px;
-      bottom: -1px;
-      background: linear-gradient(45deg, #606060, #808080, #707070);
-      border-radius: 19px;
-      z-index: -1;
-      opacity: 0.2;
     }
 
     .meta {
-      font-size: 12px;
-      color: rgba(255, 255, 255, 0.5);
+      font-size: 11px;
+      color: rgba(142, 142, 147, 0.8);
       margin-top: 6px;
+      text-align: right;
     }
 
     .username {
       font-size: 14px;
       font-weight: 600;
-      margin-bottom: 6px;
-      color: #ffffff;
+      margin-bottom: 4px;
+      color: #4A90E2;
       display: flex;
       align-items: center;
-      gap: 6px;
-    }
-
-    /* Updated verified icon */
-    .verified-icon {
-      color: #ffffff;
-      font-size: 14px;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      width: 18px;
-      height: 18px;
-      background: rgba(128, 128, 128, 0.3);
-      border-radius: 50%;
-      border: 1px solid rgba(255, 255, 255, 0.3);
+      gap: 4px;
     }
 
     img, video {
@@ -384,30 +296,28 @@
     }
 
     .reply-preview {
-      background: rgba(0, 0, 0, 0.4);
-      padding: 12px 16px;
-      border-radius: 12px;
-      font-size: 14px;
-      margin-bottom: 8px;
-      border-left: 3px solid #808080;
+      background: rgba(255, 255, 255, 0.05);
+      padding: 8px 12px;
+      border-radius: 8px;
+      font-size: 13px;
+      margin-bottom: 6px;
+      border-left: 2px solid #4A90E2;
       display: flex;
       align-items: center;
       gap: 8px;
-      backdrop-filter: blur(15px);
     }
 
     .reply-preview img, .reply-preview video {
-      max-width: 40px;
-      max-height: 40px;
-      border-radius: 8px;
+      max-width: 32px;
+      max-height: 32px;
+      border-radius: 6px;
     }
 
-    /* Mobile-optimized input container */
+    /* Enhanced input container */
     #input-container {
-      padding: 16px;
-      background: rgba(0, 0, 0, 0.4);
-      backdrop-filter: blur(25px);
-      -webkit-backdrop-filter: blur(25px);
+      padding: 12px 16px 20px 16px;
+      background: rgba(26, 26, 26, 0.95);
+      backdrop-filter: blur(10px);
       border-top: 1px solid rgba(255, 255, 255, 0.1);
       display: flex;
       flex-direction: column;
@@ -416,71 +326,68 @@
 
     #message-input {
       flex: 1;
-      padding: 16px 20px;
-      background: rgba(32, 32, 32, 0.3);
+      padding: 12px 16px;
+      background: rgba(44, 44, 46, 0.6);
       border: 1px solid rgba(255, 255, 255, 0.1);
       border-radius: 20px;
       resize: none;
-      min-height: 50px;
+      min-height: 44px;
       max-height: 120px;
       overflow-y: auto;
       color: #ffffff;
       font-size: 16px;
-      backdrop-filter: blur(15px);
-      transition: all 0.3s ease;
+      backdrop-filter: blur(10px);
+      transition: all 0.2s ease;
     }
 
     #message-input:focus {
       outline: none;
-      border-color: rgba(128, 128, 128, 0.4);
-      box-shadow: 0 0 20px rgba(128, 128, 128, 0.2);
-      background: rgba(48, 48, 48, 0.4);
+      border-color: rgba(74, 144, 226, 0.5);
+      background: rgba(44, 44, 46, 0.8);
     }
 
     #message-input::placeholder {
-      color: rgba(255, 255, 255, 0.4);
+      color: rgba(142, 142, 147, 0.6);
     }
 
     .char-counter {
-      font-size: 12px;
-      color: rgba(255, 255, 255, 0.5);
+      font-size: 11px;
+      color: rgba(142, 142, 147, 0.6);
       text-align: right;
       margin-top: 4px;
     }
 
     .char-counter.warning {
-      color: #f59e0b;
+      color: #ff9500;
     }
 
     .char-counter.error {
-      color: #ef4444;
+      color: #ff3b30;
     }
 
     #send-button {
-      padding: 16px 24px;
-      background: linear-gradient(135deg, #404040, #606060);
+      padding: 12px 20px;
+      background: #4A90E2;
       color: white;
       border: none;
       border-radius: 20px;
       cursor: pointer;
       font-size: 16px;
       font-weight: 600;
-      transition: all 0.3s ease;
-      min-width: 100px;
-      min-height: 50px;
+      transition: all 0.2s ease;
+      min-width: 70px;
+      height: 44px;
     }
 
     #send-button:hover:not(:disabled) {
-      transform: translateY(-2px);
-      box-shadow: 0 8px 25px rgba(64, 64, 64, 0.4);
-      background: linear-gradient(135deg, #505050, #707070);
+      background: #357ABD;
+      transform: scale(1.02);
     }
 
     #send-button:disabled {
-      background: rgba(64, 64, 64, 0.3);
+      background: rgba(142, 142, 147, 0.3);
       cursor: not-allowed;
       transform: none;
-      box-shadow: none;
     }
 
     #file-input {
@@ -488,173 +395,168 @@
     }
 
     #file-button {
-      padding: 16px 20px;
-      background: rgba(64, 64, 64, 0.3);
+      padding: 12px;
+      background: rgba(44, 44, 46, 0.6);
       color: #ffffff;
-      border: 1px solid rgba(255, 255, 255, 0.2);
+      border: 1px solid rgba(255, 255, 255, 0.1);
       border-radius: 20px;
       cursor: pointer;
-      font-size: 18px;
-      transition: all 0.3s ease;
+      font-size: 20px;
+      transition: all 0.2s ease;
       backdrop-filter: blur(10px);
-      min-height: 50px;
+      width: 44px;
+      height: 44px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
     }
 
     #file-button:hover {
-      background: rgba(64, 64, 64, 0.5);
-      transform: translateY(-2px);
+      background: rgba(44, 44, 46, 0.8);
     }
 
-    /* Updated sticker button styling to black/grey theme */
     #create-sticker-button {
-      background: linear-gradient(135deg, #2a2a2a, #1a1a1a);
-      color: #ffffff;
-      border: 1px solid rgba(255, 255, 255, 0.2);
-      padding: 10px 16px;
-      border-radius: 12px;
+      padding: 8px 12px;
+      background: #ff9500;
+      color: white;
+      border: none;
+      border-radius: 16px;
       cursor: pointer;
-      font-size: 14px;
-      font-weight: 500;
-      transition: all 0.3s ease;
-      backdrop-filter: blur(10px);
+      font-size: 13px;
+      transition: all 0.2s ease;
     }
 
     #create-sticker-button:hover {
-      background: linear-gradient(135deg, #3a3a3a, #2a2a2a);
-      border-color: rgba(255, 255, 255, 0.3);
-      transform: translateY(-1px);
-    }
-
-    #create-sticker-button:active {
-      transform: translateY(0);
+      background: #e6850e;
     }
 
     #media-preview {
-      max-width: 120px;
-      max-height: 120px;
+      max-width: 100px;
+      max-height: 100px;
       border-radius: 12px;
     }
 
     #media-preview-container {
       display: none;
-      padding: 16px;
-      background: rgba(0, 0, 0, 0.4);
+      padding: 12px;
+      background: rgba(44, 44, 46, 0.6);
       border-radius: 16px;
       display: flex;
       align-items: center;
       gap: 12px;
-      backdrop-filter: blur(15px);
+      backdrop-filter: blur(10px);
       border: 1px solid rgba(255, 255, 255, 0.1);
     }
 
     #media-preview-container button {
-      background: rgba(239, 68, 68, 0.3);
-      border: 1px solid rgba(239, 68, 68, 0.4);
-      color: #ef4444;
+      background: rgba(255, 59, 48, 0.2);
+      border: 1px solid rgba(255, 59, 48, 0.3);
+      color: #ff3b30;
       cursor: pointer;
-      padding: 10px 14px;
-      border-radius: 10px;
-      transition: all 0.3s ease;
+      padding: 6px 10px;
+      border-radius: 12px;
+      transition: all 0.2s ease;
+      font-size: 12px;
     }
 
     #media-preview-container button:hover {
-      background: rgba(239, 68, 68, 0.5);
+      background: rgba(255, 59, 48, 0.3);
     }
 
     #typing-indicator {
-      font-size: 14px;
-      color: rgba(255, 255, 255, 0.6);
-      padding: 8px 20px;
-      background: rgba(0, 0, 0, 0.3);
-      backdrop-filter: blur(15px);
+      font-size: 13px;
+      color: rgba(142, 142, 147, 0.8);
+      padding: 8px 16px;
+      background: rgba(26, 26, 26, 0.5);
+      backdrop-filter: blur(10px);
+      min-height: 20px;
     }
 
     #reply-input-preview {
-      background: rgba(0, 0, 0, 0.4);
-      padding: 12px 16px;
+      background: rgba(44, 44, 46, 0.6);
+      padding: 10px 12px;
       border-radius: 12px;
-      font-size: 14px;
+      font-size: 13px;
       display: flex;
       justify-content: space-between;
       align-items: center;
-      backdrop-filter: blur(15px);
-      border: 1px solid rgba(128, 128, 128, 0.3);
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(74, 144, 226, 0.3);
       color: #ffffff;
     }
 
     #reply-input-preview button {
       background: none;
       border: none;
-      color: #ef4444;
+      color: #ff3b30;
       cursor: pointer;
       font-size: 16px;
-      padding: 6px 10px;
-      border-radius: 6px;
-      transition: all 0.3s ease;
+      padding: 4px 6px;
+      border-radius: 4px;
+      transition: all 0.2s ease;
     }
 
     #reply-input-preview button:hover {
-      background: rgba(239, 68, 68, 0.2);
+      background: rgba(255, 59, 48, 0.2);
     }
 
     #stickers-container {
       display: none;
       position: absolute;
-      background: rgba(0, 0, 0, 0.9);
-      border: 1px solid rgba(255, 255, 255, 0.2);
+      background: rgba(26, 26, 26, 0.95);
+      border: 1px solid rgba(255, 255, 255, 0.1);
       border-radius: 16px;
-      padding: 16px;
-      max-height: 140px;
+      padding: 12px;
+      max-height: 100px;
       overflow-x: auto;
       white-space: nowrap;
       z-index: 100;
-      width: 90%;
-      max-width: 350px;
-      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
-      backdrop-filter: blur(25px);
+      width: calc(100% - 32px);
+      backdrop-filter: blur(15px);
       bottom: 100%;
       margin-bottom: 8px;
     }
 
     #stickers-container img {
-      max-width: 70px;
-      max-height: 70px;
-      margin-right: 10px;
+      max-width: 50px;
+      max-height: 50px;
+      margin-right: 8px;
       cursor: pointer;
       display: inline-block;
-      border-radius: 10px;
-      transition: all 0.3s ease;
+      border-radius: 8px;
+      transition: all 0.2s ease;
     }
 
     #stickers-container img:hover {
       transform: scale(1.1);
-      box-shadow: 0 4px 15px rgba(128, 128, 128, 0.3);
     }
 
-    /* Fixed stickers toggle button */
     #stickers-toggle {
-      padding: 14px 18px;
-      background: rgba(64, 64, 64, 0.3);
+      padding: 12px 16px;
+      background: rgba(44, 44, 46, 0.6);
       color: #ffffff;
-      border: 1px solid rgba(255, 255, 255, 0.2);
-      border-radius: 16px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 20px;
       cursor: pointer;
       font-size: 14px;
       position: relative;
       backdrop-filter: blur(10px);
-      transition: all 0.3s ease;
-      min-height: 44px;
+      transition: all 0.2s ease;
+      height: 44px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 120px;
     }
 
     #stickers-toggle:hover {
-      background: rgba(64, 64, 64, 0.5);
-      transform: translateY(-2px);
+      background: rgba(44, 44, 46, 0.8);
     }
 
     #stickers-toggle::after {
       content: '▼';
       margin-left: 8px;
-      font-size: 12px;
+      font-size: 11px;
       transition: transform 0.3s ease;
     }
 
@@ -664,11 +566,11 @@
 
     .loading-spinner {
       display: inline-block;
-      width: 20px;
-      height: 20px;
-      border: 2px solid rgba(128, 128, 128, 0.3);
+      width: 16px;
+      height: 16px;
+      border: 2px solid rgba(142, 142, 147, 0.3);
       border-radius: 50%;
-      border-top-color: #808080;
+      border-top-color: #4A90E2;
       animation: spin 1s ease-in-out infinite;
     }
 
@@ -677,15 +579,16 @@
     }
 
     .upload-progress {
-      background: rgba(64, 64, 64, 0.3);
-      padding: 12px 16px;
+      background: rgba(74, 144, 226, 0.2);
+      padding: 10px 12px;
       border-radius: 12px;
       margin-bottom: 8px;
       display: flex;
       align-items: center;
-      gap: 12px;
-      backdrop-filter: blur(15px);
-      border: 1px solid rgba(255, 255, 255, 0.2);
+      gap: 10px;
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(74, 144, 226, 0.3);
+      font-size: 13px;
     }
 
     .modal-overlay {
@@ -694,8 +597,8 @@
       left: 0;
       width: 100%;
       height: 100%;
-      background: rgba(0, 0, 0, 0.85);
-      backdrop-filter: blur(15px);
+      background: rgba(0, 0, 0, 0.8);
+      backdrop-filter: blur(10px);
       display: flex;
       align-items: center;
       justify-content: center;
@@ -703,242 +606,207 @@
     }
 
     .modal {
-      background: rgba(0, 0, 0, 0.95);
-      backdrop-filter: blur(25px);
-      border: 1px solid rgba(255, 255, 255, 0.2);
-      border-radius: 20px;
-      padding: 32px;
-      max-width: 400px;
+      background: rgba(26, 26, 26, 0.95);
+      backdrop-filter: blur(20px);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 16px;
+      padding: 24px;
+      max-width: 320px;
       width: 90%;
       text-align: center;
-      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.7);
     }
 
     .modal h3 {
       color: #ffffff;
-      margin-bottom: 16px;
-      font-size: 20px;
+      margin-bottom: 12px;
+      font-size: 18px;
     }
 
     .modal p {
-      color: rgba(255, 255, 255, 0.8);
-      margin-bottom: 24px;
-      line-height: 1.5;
+      color: rgba(142, 142, 147, 0.8);
+      margin-bottom: 20px;
+      line-height: 1.4;
+      font-size: 14px;
     }
 
     .modal button {
-      background: linear-gradient(135deg, #404040, #606060);
+      background: #4A90E2;
       color: white;
       border: none;
-      padding: 14px 28px;
-      border-radius: 14px;
+      padding: 12px 20px;
+      border-radius: 12px;
       cursor: pointer;
       font-size: 16px;
       font-weight: 600;
-      transition: all 0.3s ease;
+      transition: all 0.2s ease;
     }
 
     .modal button:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 8px 25px rgba(64, 64, 64, 0.4);
+      background: #357ABD;
     }
 
-    /* Enhanced mobile responsiveness */
+    /* Mobile optimizations */
     @media (max-width: 768px) {
       #header {
         padding: 12px 16px;
-        min-height: 70px;
-      }
-      
-      .recipient-avatar {
-        width: 42px;
-        height: 42px;
-      }
-      
-      .recipient-name {
-        font-size: 16px;
-      }
-      
-      .recipient-username {
-        font-size: 13px;
       }
       
       #messages {
-        padding: 16px 12px;
+        padding: 12px;
       }
       
       #input-container {
-        padding: 12px;
+        padding: 12px 16px 16px 16px;
       }
       
       .message {
         max-width: 90%;
-        padding: 12px 16px;
-        font-size: 15px;
+        padding: 10px 14px;
       }
-      
+
       #message-input {
-        font-size: 16px;
-        padding: 14px 18px;
-      }
-      
-      #send-button, #file-button {
-        min-height: 48px;
-        font-size: 15px;
-      }
-      
-      #stickers-container {
-        width: 95%;
-        max-height: 120px;
-      }
-      
-      #stickers-container img {
-        max-width: 60px;
-        max-height: 60px;
+        font-size: 16px; /* Prevent zoom on iOS */
       }
     }
 
-    @media (max-width: 480px) {
-      .message {
-        max-width: 95%;
-        padding: 10px 14px;
-        font-size: 14px;
-      }
-      
-      .recipient-name {
-        font-size: 15px;
-      }
-      
-      #header button {
-        padding: 10px 12px;
-        font-size: 14px;
-      }
+    /* Input row layout */
+    .input-row {
+      display: flex;
+      gap: 8px;
+      align-items: flex-end;
+    }
+
+    .input-column {
+      flex: 1;
+    }
+
+    .stickers-row {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      position: relative;
     }
   </style>
-<script src="/socket.io/socket.io.js"></script>
 </head>
 <body>
-  <!-- Background shapes for liquid glass effect -->
   <div class="background-shapes">
-    <div class="shape"></div>
     <div class="shape"></div>
     <div class="shape"></div>
     <div class="shape"></div>
   </div>
 
   <div id="chat-container">
-    <!-- Enhanced header with recipient profile, back button, and menu -->
     <div id="header">
-      <div class="header-left">
-        <button class="back-button" onclick="window.history.back()">←</button>
-        <div class="recipient-profile">
-          <img id="recipient-avatar" class="recipient-avatar" src="https://example.com/default-profile.png" alt="Recipient Avatar">
-          <div class="recipient-info">
-            <div class="recipient-name">
-              <span id="recipient-name">Loading...</span>
-            </div>
-            <div id="recipient-username" class="recipient-username">@loading</div>
-            <div id="recipient-status" class="recipient-status">online</div>
-          </div>
-        </div>
-      </div>
-      <div class="header-right">
-        <button class="menu-button" onclick="window.location.href = `/info/${recipientId}`">⋯</button>
+      <button id="back-button" onclick="window.location.href='/chats.html'">←</button>
+      <img id="profile-picture" src="" alt="Profile" style="display: none;">
+      <div id="user-info">
+        <div id="user-name"></div>
+        <div id="user-username"></div>
+        <div id="user-status">last seen recently</div>
       </div>
     </div>
-
     <div id="messages">
-      <div id="no-messages">No messages yet. Start a conversation!</div>
+      <div id="no-messages">No messages yet. Start the conversation!</div>
     </div>
-
-    <div id="typing-indicator" style="display: none;"></div>
-
+    <div id="typing-indicator"></div>
     <div id="input-container">
-      <div id="reply-input-preview" style="display: none;">
-        <span>Replying to: <span id="reply-preview-text"></span></span>
-        <button onclick="cancelReply()">✕</button>
+      <div id="reply-input-preview" style="display: none;"></div>
+      <div id="stickers-container"></div>
+      <div class="stickers-row">
+        <button id="stickers-toggle">My Stickers</button>
+        <div style="flex: 1;"></div>
       </div>
-
-      <div id="media-preview-container" style="display: none;">
-        <img id="media-preview" alt="Preview">
-        <button onclick="clearMediaPreview()">Remove</button>
+      <div id="media-preview-container">
+        <img id="media-preview" src="/placeholder.svg" alt="Media Preview">
+        <button onclick="clearMediaPreview()">✕</button>
+        <button id="create-sticker-button">Create Sticker</button>
       </div>
-
-      <div style="display: flex; gap: 12px; align-items: flex-end;">
-        <textarea id="message-input" placeholder="Type a message..." rows="1"></textarea>
-        <button id="file-button" onclick="document.getElementById('file-input').click()">📎</button>
-        <button id="send-button" onclick="sendMessage()">Send</button>
-      </div>
-
-      <div class="char-counter" id="char-counter">0/4000</div>
-
-      <div style="display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap;">
-        <button id="create-sticker-button" onclick="createSticker()">My Sticker</button>
-        <div style="position: relative;">
-          <button id="stickers-toggle" onclick="toggleStickers()">Stickers</button>
-          <div id="stickers-container"></div>
+      <div class="input-row">
+        <div class="input-column">
+          <textarea id="message-input" placeholder="Message..." rows="1"></textarea>
+          <div class="char-counter" id="char-counter">0/1000</div>
         </div>
+        <button id="send-button">Send</button>
+        <button id="file-button">📎</button>
+        <input type="file" id="file-input" accept="image/*,video/*,audio/*">
       </div>
-
-      <input type="file" id="file-input" accept="image/*,video/*,audio/*" onchange="handleFileSelect(event)">
     </div>
   </div>
 
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.5.0/socket.io.min.js"></script>
   <script>
-    document.addEventListener("DOMContentLoaded", () => {
-      if (typeof io === "undefined") {
-        console.error("Socket.IO not loaded");
-        showCustomAlert("Error", "Failed to load Socket.IO. Please try again later.");
+    const socket = io();
+    let isLoading = false;
+    let earliestTimestamp = null;
+    let replyingTo = null;
+    let typingTimeout = null;
+    let recipientData = null;
+    let isSticker = false;
+    let lastActivity = null;
+    const MAX_CHARS = 1000;
+
+    // Get recipientId and authToken
+    const params = window.location.pathname.split("/");
+    const recipientId = params[params.length - 1];
+    const authToken = localStorage.getItem("authToken");
+
+    console.log("authToken:", authToken);
+    console.log("recipientId:", recipientId);
+
+    if (!authToken) {
+      showCustomAlert("Authentication Required", "No authToken found in localStorage. Please log in first.");
+      setTimeout(() => window.location.href = "/login", 2000);
+    }
+
+    if (!recipientId || isNaN(recipientId)) {
+      showCustomAlert("Invalid Recipient", "Invalid recipient ID in URL.");
+      setTimeout(() => window.location.href = "/chats.html", 2000);
+    }
+
+    // Update status based on activity
+    function updateUserStatus() {
+      const statusEl = document.getElementById("user-status");
+      if (!lastActivity) {
+        statusEl.textContent = "last seen recently";
         return;
       }
 
-      const socket = io();
-      let isLoading = false;
-      let earliestTimestamp = null;
-      let replyingTo = null;
-      let typingTimeout = null;
-      let recipientData = null;
-      let isSticker = false;
-      const MAX_CHARS = 1000;
+      const now = Date.now();
+      const diff = now - lastActivity;
+      const minutes = Math.floor(diff / (1000 * 60));
+      const hours = Math.floor(minutes / 60);
+      const days = Math.floor(hours / 24);
 
-      // Get DOM elements
-      const messageInput = document.getElementById("message-input");
-      const sendButton = document.getElementById("send-button");
-      const fileInput = document.getElementById("file-input");
-      const fileButton = document.getElementById("file-button");
-      const mediaPreview = document.getElementById("media-preview");
-      const mediaPreviewContainer = document.getElementById("media-preview-container");
-      const createStickerButton = document.getElementById("create-sticker-button");
-      const stickersContainer = document.getElementById("stickers-container");
-      const stickersToggle = document.getElementById("stickers-toggle");
-      const charCounter = document.getElementById("char-counter");
-
-      // Check if DOM elements are found
-      if (!messageInput || !sendButton || !fileInput) {
-        console.error("DOM elements missing:", { messageInput, sendButton, fileInput });
-        showCustomAlert("Error", "Internal error: Required DOM elements not found.");
-        return;
+      if (minutes < 1) {
+        statusEl.textContent = "online";
+        statusEl.style.color = "#34c759";
+      } else if (minutes < 60) {
+        statusEl.textContent = `last seen ${minutes} minute${minutes > 1 ? 's' : ''} ago`;
+        statusEl.style.color = "#8e8e93";
+      } else if (hours < 24) {
+        statusEl.textContent = `last seen ${hours} hour${hours > 1 ? 's' : ''} ago`;
+        statusEl.style.color = "#8e8e93";
+      } else {
+        statusEl.textContent = `last seen ${days} day${days > 1 ? 's' : ''} ago`;
+        statusEl.style.color = "#8e8e93";
       }
+    }
 
-      // Get recipientId and authToken
-      const params = window.location.pathname.split("/");
-      const recipientId = params[params.length - 1];
-      const authToken = localStorage.getItem("authToken");
+    // Store activity timestamp
+    function updateActivity() {
+      lastActivity = Date.now();
+      localStorage.setItem(`lastActivity_${recipientId}`, lastActivity.toString());
+      updateUserStatus();
+    }
 
-      console.log("authToken:", authToken);
-      console.log("recipientId:", recipientId);
-
-      if (!authToken) {
-        showCustomAlert("Authentication Required", "No authToken found in localStorage. Please log in first.");
-        setTimeout(() => window.location.href = "/login", 2000);
-        return;
+    // Load stored activity
+    function loadStoredActivity() {
+      const stored = localStorage.getItem(`lastActivity_${recipientId}`);
+      if (stored) {
+        lastActivity = parseInt(stored);
+        updateUserStatus();
       }
-
-      if (!recipientId || isNaN(recipientId)) {
-        showCustomAlert("Invalid Recipient", "Invalid recipient ID in URL.");
-        setTimeout(() => window.location.href = "/chats.html", 2000);
-        return;
-      }
+    }
 
     // Custom alert modal function
     function showCustomAlert(title, message) {
@@ -954,85 +822,42 @@
       document.body.appendChild(overlay);
     }
 
+    // Fetch recipient details
     async function fetchRecipient() {
       try {
-        const res = await fetch(`/user/id/${recipientId}`);
+        const res = await fetch(`/user/id/478135254`); // Use the specified endpoint
         const data = await res.json();
         if (res.ok) {
           recipientData = data;
-          
-          // Update recipient name with verification badge
-          const nameElement = document.getElementById("recipient-name");
-          nameElement.innerHTML = `
-            ${escapeHtml(data.name || data.username)}
-            ${data.verified ? '<img src="/verified.png" alt="Verified" class="verified-badge">' : ''}
+          const nameEl = document.getElementById("user-name");
+          const usernameEl = document.getElementById("user-username");
+          const profileImg = document.getElementById("profile-picture");
+
+          // Set name and verified badge
+          nameEl.innerHTML = `
+            ${escapeHtml(data.name || data.username)} 
+            ${data.verified ? '<img class="verified-badge" alt="Verified">' : ''}
           `;
-          
-          // Update recipient username
-          document.getElementById("recipient-username").textContent = `@${data.username || 'unknown'}`;
-          
-          // Update recipient avatar
-          document.getElementById("recipient-avatar").src = data.profileimg || 'https://example.com/default-profile.png';
-          
-          // Update online status based on last activity
-          const lastActivity = new Date(data.logdate);
-          const now = new Date();
-          const diffMinutes = (now - lastActivity) / (1000 * 60);
-          
-          const statusElement = document.getElementById('recipient-status');
-          if (diffMinutes < 5) {
-            statusElement.textContent = 'Online';
-            statusElement.className = 'recipient-status online';
-          } else if (diffMinutes < 60) {
-            statusElement.textContent = `Last seen ${Math.floor(diffMinutes)} minutes ago`;
-            statusElement.className = 'recipient-status away';
+
+          // Set username
+          usernameEl.textContent = `@${data.username}`;
+
+          // Set profile picture
+          if (data.profileimg) {
+            profileImg.src = data.profileimg;
+            profileImg.style.display = 'block';
           } else {
-            const diffHours = Math.floor(diffMinutes / 60);
-            statusElement.textContent = `Last seen ${diffHours} hours ago`;
-            statusElement.className = 'recipient-status offline';
+            profileImg.style.display = 'none';
           }
         } else {
           console.error("Error fetching recipient:", data.error);
-          document.getElementById("recipient-name").textContent = "Unknown User";
+          document.getElementById("user-name").textContent = "Unknown User";
+          document.getElementById("user-username").textContent = "";
         }
       } catch (err) {
         console.error("Error fetching recipient:", err);
-        document.getElementById("recipient-name").textContent = "Error";
-      }
-    }
-
-    async function fetchUserData() {
-      try {
-        const response = await fetch('/user/id/478135254');
-        const userData = await response.json();
-        
-        document.getElementById('user-display-name').textContent = userData.name || 'Unknown User';
-        document.getElementById('user-username').textContent = `@${userData.username || 'unknown'}`;
-        document.getElementById('user-avatar').src = userData.profileimg || 'https://example.com/default-profile.png';
-        
-        if (userData.verified) {
-          document.getElementById('verified-badge').style.display = 'inline';
-        }
-        
-        // Update online status based on last activity
-        const lastActivity = new Date(userData.logdate);
-        const now = new Date();
-        const diffMinutes = (now - lastActivity) / (1000 * 60);
-        
-        const statusElement = document.getElementById('user-status');
-        if (diffMinutes < 5) {
-          statusElement.textContent = 'Online';
-          statusElement.className = 'user-status online';
-        } else if (diffMinutes < 60) {
-          statusElement.textContent = `Last seen ${Math.floor(diffMinutes)} minutes ago`;
-          statusElement.className = 'user-status away';
-        } else {
-          const diffHours = Math.floor(diffMinutes / 60);
-          statusElement.textContent = `Last seen ${diffHours} hours ago`;
-          statusElement.className = 'user-status offline';
-        }
-      } catch (error) {
-        console.error('Error fetching user data:', error);
+        document.getElementById("user-name").textContent = "Error";
+        document.getElementById("user-username").textContent = "";
       }
     }
 
@@ -1071,6 +896,8 @@
             renderMessages(data.reverse(), recipientId, !before);
             if (data.length > 0) {
               earliestTimestamp = data[0].timestamp;
+              // Update activity from last message
+              updateActivity();
             }
           }
         } else {
@@ -1086,6 +913,17 @@
         const loadingDiv = document.getElementById('loading-messages');
         if (loadingDiv) loadingDiv.remove();
       }
+    }
+
+    // Add liquid deformation effect
+    function addLiquidEffect(element) {
+      element.addEventListener('mousemove', (e) => {
+        const rect = element.getBoundingClientRect();
+        const x = ((e.clientX - rect.left) / rect.width) * 100;
+        const y = ((e.clientY - rect.top) / rect.height) * 100;
+        element.style.setProperty('--mouse-x', x + '%');
+        element.style.setProperty('--mouse-y', y + '%');
+      });
     }
 
     // Fetch message metadata for replies
@@ -1125,7 +963,7 @@
         content += `
           <div class="username">
             ${escapeHtml(msg.senderName || msg.senderUsername || "Unknown")}
-            ${msg.senderVerified ? '<img src="/verified.png" alt="Verified" class="verified-badge">' : ''}
+            ${msg.senderVerified ? '<span class="verified-icon">✓</span>' : ''}
           </div>
         `;
 
@@ -1149,7 +987,7 @@
               <div class="reply-preview">
                 ${mediaPreview}
                 ${escapeHtml(replyData.senderName || replyData.senderUsername || "Unknown")}
-                ${replyData.senderVerified ? '<img src="/verified.png" alt="Verified" class="verified-badge">' : ''}: 
+                ${replyData.senderVerified ? '<span class="verified-icon">✓</span>' : ''}: 
                 ${escapeHtml(replyText.slice(0, 50))}${replyText.length > 50 ? "..." : ""}
               </div>
             `;
@@ -1186,10 +1024,81 @@
           updateReplyPreview();
         });
 
+        // Add liquid effect
+        addLiquidEffect(div);
+
         if (append) {
           container.appendChild(div);
         } else {
           container.insertBefore(div, container.firstChild);
+        }
+
+        if (msg.replies && msg.replies.length > 0) {
+          msg.replies.forEach(reply => {
+            const replyDiv = document.createElement("div");
+            replyDiv.classList.add("message", "received");
+            replyDiv.style.marginLeft = "30px";
+            replyDiv.style.background = "rgba(44, 44, 46, 0.2)";
+            replyDiv.dataset.messageId = reply.id;
+
+            if (reply.senderVerified) {
+              replyDiv.classList.add("verified-message");
+            }
+
+            let replyContent = `
+              <div class="username">
+                ${escapeHtml(reply.senderName || reply.senderUsername || "Unknown")}
+                ${reply.senderVerified ? '<span class="verified-icon">✓</span>' : ''}
+              </div>
+            `;
+
+            if (reply.replyTo) {
+              replyContent += `
+                <div class="reply-preview">
+                  Reply to message ID ${reply.replyTo}
+                </div>
+              `;
+            }
+
+            if (reply.fileUrl) {
+              if (reply.issticker) {
+                replyContent += `<img src="${reply.fileUrl}" alt="Sticker" class="sticker">`;
+              } else if (reply.fileType?.startsWith("image")) {
+                replyContent += `<img src="${reply.fileUrl}" alt="Image">`;
+              } else if (reply.fileType?.startsWith("video")) {
+                replyContent += `<video controls preload="metadata" src="${reply.fileUrl}"></video>`;
+              } else if (reply.fileType?.startsWith("audio")) {
+                replyContent += `<audio controls preload="metadata" src="${reply.fileUrl}"></audio>`;
+              } else {
+                replyContent += `<a href="${reply.fileUrl}" target="_blank">Download file</a>`;
+              }
+            }
+            if (reply.text) {
+              const formattedReplyText = escapeHtml(reply.text).replace(/\n/g, "<br>");
+              replyContent += `<div class="message-text">${formattedReplyText}</div>`;
+            }
+
+            replyDiv.innerHTML = `
+              ${replyContent || "[Media]"}
+              <div class="meta">
+                ${new Date(reply.timestamp).toLocaleString()}
+              </div>
+            `;
+
+            replyDiv.addEventListener("click", () => {
+              replyingTo = { id: reply.id, text: reply.text || "[Media]", sender: reply.senderName || reply.senderUsername || "Unknown" };
+              updateReplyPreview();
+            });
+
+            // Add liquid effect to replies too
+            addLiquidEffect(replyDiv);
+
+            if (append) {
+              container.appendChild(replyDiv);
+            } else {
+              container.insertBefore(replyDiv, container.firstChild);
+            }
+          });
         }
       }
 
@@ -1198,7 +1107,7 @@
       }
     }
 
-    // Scroll to load older messages
+    // Infinite scroll
     document.getElementById("messages").addEventListener("scroll", () => {
       if (document.getElementById("messages").scrollTop < 50 && earliestTimestamp) {
         loadMessages(earliestTimestamp);
@@ -1210,13 +1119,19 @@
       console.log("New message received:", msg);
       document.getElementById("no-messages").style.display = "none";
       renderMessages([msg], recipientId, true);
+      updateActivity();
     });
 
+    // Typing indicator
     socket.on("showTyping", ({ users }) => {
       const typingIndicator = document.getElementById("typing-indicator");
       if (users.length > 0) {
-        const names = users.map(u => (u.name || u.username) + (u.verified ? ' <img src="/verified.png" alt="Verified" class="verified-badge">' : '')).join(", ");
-        typingIndicator.innerHTML = `${names} ${users.length > 1 ? "are" : "is"} typing...`;
+        const names = users.map(u => (u.name || u.username) + (u.verified ? ' ✓' : '')).join(", ");
+        typingIndicator.textContent = `${names} ${users.length > 1 ? "are" : "is"} typing...`;
+        // Update status to show user is active
+        const statusEl = document.getElementById("user-status");
+        statusEl.textContent = "online";
+        statusEl.style.color = "#34c759";
       } else {
         typingIndicator.textContent = "";
       }
@@ -1250,7 +1165,6 @@
     async function sendSticker(url) {
       sendButton.disabled = true;
       
-      // Show upload progress
       const progressDiv = document.createElement('div');
       progressDiv.className = 'upload-progress';
       progressDiv.innerHTML = '<div class="loading-spinner"></div> Sending sticker...';
@@ -1286,6 +1200,7 @@
           console.log("Sticker sent successfully:", data);
           replyingTo = null;
           updateReplyPreview();
+          updateActivity();
         } else {
           console.error("Error sending sticker:", data.error);
           showCustomAlert("Error", data.error || "Failed to send sticker");
@@ -1336,7 +1251,10 @@
       createStickerButton.style.display = "none";
     });
 
-    stickersToggle.addEventListener("click", () => {
+    // Fix stickers toggle click handler
+    stickersToggle.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
       const isVisible = stickersContainer.style.display === "block";
       stickersContainer.style.display = isVisible ? "none" : "block";
       stickersToggle.classList.toggle("active", !isVisible);
@@ -1355,13 +1273,11 @@
       const text = messageInput.value.trim();
       const file = fileInput.files[0];
       
-      // Prevent empty messages
       if (!text && !file) {
         showCustomAlert("Empty Message", "Please enter a message or select a file to send.");
         return;
       }
       
-      // Character limit validation
       if (text.length > MAX_CHARS) {
         showCustomAlert("Message Too Long", `Message exceeds ${MAX_CHARS} character limit.`);
         return;
@@ -1369,7 +1285,6 @@
       
       sendButton.disabled = true;
       
-      // Show upload progress
       const progressDiv = document.createElement('div');
       progressDiv.className = 'upload-progress';
       progressDiv.innerHTML = '<div class="loading-spinner"></div> Sending message...';
@@ -1415,6 +1330,7 @@
           clearMediaPreview();
           replyingTo = null;
           updateReplyPreview();
+          updateActivity();
         } else {
           console.error("Error sending message:", data.error);
           showCustomAlert("Error", data.error || "Failed to send message");
@@ -1456,7 +1372,7 @@
     // Enhanced input handling with character counter
     messageInput.addEventListener("input", () => {
       messageInput.style.height = "auto";
-      messageInput.style.height = `${Math.min(messageInput.scrollHeight, 150)}px`;
+      messageInput.style.height = `${Math.min(messageInput.scrollHeight, 120)}px`;
       
       updateCharCounter();
 
@@ -1487,18 +1403,6 @@
       updateReplyPreview();
     }
 
-    function toggleStickers() {
-  const isVisible = stickersContainer.style.display === "block";
-  stickersContainer.style.display = isVisible ? "none" : "block";
-  stickersToggle.classList.toggle("active", !isVisible);
-}
-
-function createSticker() {
-  isSticker = true;
-  createStickerButton.style.display = "none";
-  showCustomAlert("Sticker Mode", "This image will be sent as a sticker!");
-}
-    
     // HTML escape function
     function escapeHtml(text) {
       return text
@@ -1509,10 +1413,13 @@ function createSticker() {
 
     // Initial load
     fetchRecipient();
-    fetchUserData();
     loadMessages();
     loadStickers();
     updateCharCounter();
+    loadStoredActivity();
+
+    // Update status periodically
+    setInterval(updateUserStatus, 60000); // Update every minute
   </script>
 </body>
 </html>
