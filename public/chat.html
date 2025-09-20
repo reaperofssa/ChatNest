@@ -92,42 +92,69 @@
       z-index: 1;
     }
 
-    /* Enhanced header with user profile info */
+    /* Updated header with back button and menu */
     #header {
-      background: rgba(0, 0, 0, 0.4);
-      backdrop-filter: blur(25px);
-      -webkit-backdrop-filter: blur(25px);
-      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-      padding: 16px 20px;
       display: flex;
       align-items: center;
-      gap: 12px;
-      box-shadow: 0 2px 20px rgba(0, 0, 0, 0.3);
+      justify-content: space-between;
+      padding: 16px 20px;
+      background: rgba(20, 20, 20, 0.95);
+      backdrop-filter: blur(20px);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+      position: sticky;
+      top: 0;
+      z-index: 100;
       min-height: 80px;
     }
 
-    .user-profile {
+    .header-left {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .back-button {
+      background: none;
+      border: none;
+      color: #ffffff;
+      font-size: 24px;
+      cursor: pointer;
+      padding: 8px;
+      border-radius: 50%;
+      transition: all 0.3s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 40px;
+      height: 40px;
+    }
+
+    .back-button:hover {
+      background: rgba(255, 255, 255, 0.1);
+      transform: scale(1.1);
+    }
+
+    .recipient-profile {
       display: flex;
       align-items: center;
       gap: 12px;
-      flex: 1;
     }
 
-    .user-avatar {
+    .recipient-avatar {
       width: 48px;
       height: 48px;
       border-radius: 50%;
-      border: 2px solid rgba(255, 255, 255, 0.2);
       object-fit: cover;
+      border: 2px solid rgba(255, 255, 255, 0.2);
     }
 
-    .user-info {
+    .recipient-info {
       display: flex;
       flex-direction: column;
       gap: 2px;
     }
 
-    .user-name {
+    .recipient-name {
       font-size: 18px;
       font-weight: 600;
       color: #ffffff;
@@ -136,43 +163,60 @@
       gap: 6px;
     }
 
-    .user-username {
+    .recipient-username {
       font-size: 14px;
-      color: rgba(255, 255, 255, 0.6);
+      color: #888888;
     }
 
-    .user-status {
+    .recipient-status {
       font-size: 12px;
-      color: #4ade80;
+      color: #666666;
+    }
+
+    .recipient-status.online {
+      color: #4CAF50;
+    }
+
+    .recipient-status.away {
+      color: #FF9800;
+    }
+
+    .recipient-status.offline {
+      color: #666666;
+    }
+
+    .header-right {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .menu-button {
+      background: none;
+      border: none;
+      color: #ffffff;
+      font-size: 20px;
+      cursor: pointer;
+      padding: 8px;
+      border-radius: 50%;
+      transition: all 0.3s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 40px;
+      height: 40px;
+    }
+
+    .menu-button:hover {
+      background: rgba(255, 255, 255, 0.1);
+      transform: scale(1.1);
     }
 
     .verified-badge {
-      width: 18px;
-      height: 18px;
-    }
-
-    #header button {
-      background: rgba(64, 64, 64, 0.3);
-      border: 1px solid rgba(255, 255, 255, 0.2);
-      color: #ffffff;
-      font-size: 16px;
-      cursor: pointer;
-      padding: 12px 16px;
-      border-radius: 12px;
-      backdrop-filter: blur(10px);
-      transition: all 0.3s ease;
-      min-height: 44px;
-    }
-
-    #header button:hover {
-      background: rgba(64, 64, 64, 0.5);
-      transform: translateY(-1px);
-    }
-
-    #recipient-name {
-      color: #ffffff;
-      font-size: 18px;
-      font-weight: 600;
+      width: 16px;
+      height: 16px;
+      margin-left: 4px;
+      vertical-align: middle;
     }
 
     /* Mobile-optimized messages container with liquid glass */
@@ -461,23 +505,28 @@
       transform: translateY(-2px);
     }
 
-    /* Fixed sticker button styling */
+    /* Updated sticker button styling to black/grey theme */
     #create-sticker-button {
-      padding: 14px 18px;
-      background: linear-gradient(135deg, #2a2a2a, #404040);
-      color: white;
+      background: linear-gradient(135deg, #2a2a2a, #1a1a1a);
+      color: #ffffff;
       border: 1px solid rgba(255, 255, 255, 0.2);
-      border-radius: 16px;
+      padding: 10px 16px;
+      border-radius: 12px;
       cursor: pointer;
       font-size: 14px;
+      font-weight: 500;
       transition: all 0.3s ease;
-      min-height: 44px;
+      backdrop-filter: blur(10px);
     }
 
     #create-sticker-button:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 4px 15px rgba(64, 64, 64, 0.4);
-      background: linear-gradient(135deg, #404040, #505050);
+      background: linear-gradient(135deg, #3a3a3a, #2a2a2a);
+      border-color: rgba(255, 255, 255, 0.3);
+      transform: translateY(-1px);
+    }
+
+    #create-sticker-button:active {
+      transform: translateY(0);
     }
 
     #media-preview {
@@ -701,16 +750,16 @@
         min-height: 70px;
       }
       
-      .user-avatar {
+      .recipient-avatar {
         width: 42px;
         height: 42px;
       }
       
-      .user-name {
+      .recipient-name {
         font-size: 16px;
       }
       
-      .user-username {
+      .recipient-username {
         font-size: 13px;
       }
       
@@ -756,7 +805,7 @@
         font-size: 14px;
       }
       
-      .user-name {
+      .recipient-name {
         font-size: 15px;
       }
       
@@ -777,21 +826,24 @@
   </div>
 
   <div id="chat-container">
-    <!-- Enhanced header with user profile -->
+    <!-- Enhanced header with recipient profile, back button, and menu -->
     <div id="header">
-      <div class="user-profile">
-        <img id="user-avatar" class="user-avatar" src="https://example.com/default-profile.png" alt="User Avatar">
-        <div class="user-info">
-          <div class="user-name">
-            <span id="user-display-name">Loading...</span>
-            <img id="verified-badge" class="verified-badge" src="/verified.png" alt="Verified" style="display: none;">
+      <div class="header-left">
+        <button class="back-button" onclick="window.history.back()">←</button>
+        <div class="recipient-profile">
+          <img id="recipient-avatar" class="recipient-avatar" src="https://example.com/default-profile.png" alt="Recipient Avatar">
+          <div class="recipient-info">
+            <div class="recipient-name">
+              <span id="recipient-name">Loading...</span>
+            </div>
+            <div id="recipient-username" class="recipient-username">@loading</div>
+            <div id="recipient-status" class="recipient-status">online</div>
           </div>
-          <div id="user-username" class="user-username">@loading</div>
-          <div id="user-status" class="user-status">online</div>
         </div>
       </div>
-      <button onclick="clearChat()">Clear</button>
-      <button onclick="exportChat()">Export</button>
+      <div class="header-right">
+        <button class="menu-button" onclick="window.location.href = `/info/${recipientId}`">⋯</button>
+      </div>
     </div>
 
     <div id="messages">
@@ -830,7 +882,7 @@
       <input type="file" id="file-input" accept="image/*,video/*,audio/*" onchange="handleFileSelect(event)">
     </div>
   </div>
-  <script src="https://cdn.socket.io/4.6.1/socket.io.min.js"></script>
+
   <script>
     const socket = io();
     let isLoading = false;
@@ -879,10 +931,37 @@
         const data = await res.json();
         if (res.ok) {
           recipientData = data;
-          document.getElementById("recipient-name").innerHTML = `
-            ${escapeHtml(data.name || data.username)} 
+          
+          // Update recipient name with verification badge
+          const nameElement = document.getElementById("recipient-name");
+          nameElement.innerHTML = `
+            ${escapeHtml(data.name || data.username)}
             ${data.verified ? '<img src="/verified.png" alt="Verified" class="verified-badge">' : ''}
           `;
+          
+          // Update recipient username
+          document.getElementById("recipient-username").textContent = `@${data.username || 'unknown'}`;
+          
+          // Update recipient avatar
+          document.getElementById("recipient-avatar").src = data.profileimg || 'https://example.com/default-profile.png';
+          
+          // Update online status based on last activity
+          const lastActivity = new Date(data.logdate);
+          const now = new Date();
+          const diffMinutes = (now - lastActivity) / (1000 * 60);
+          
+          const statusElement = document.getElementById('recipient-status');
+          if (diffMinutes < 5) {
+            statusElement.textContent = 'Online';
+            statusElement.className = 'recipient-status online';
+          } else if (diffMinutes < 60) {
+            statusElement.textContent = `Last seen ${Math.floor(diffMinutes)} minutes ago`;
+            statusElement.className = 'recipient-status away';
+          } else {
+            const diffHours = Math.floor(diffMinutes / 60);
+            statusElement.textContent = `Last seen ${diffHours} hours ago`;
+            statusElement.className = 'recipient-status offline';
+          }
         } else {
           console.error("Error fetching recipient:", data.error);
           document.getElementById("recipient-name").textContent = "Unknown User";
@@ -1379,18 +1458,6 @@
       updateReplyPreview();
     }
 
- function toggleStickers() {
-  const isVisible = stickersContainer.style.display === "block";
-  stickersContainer.style.display = isVisible ? "none" : "block";
-  stickersToggle.classList.toggle("active", !isVisible);
-}
-
-function createSticker() {
-  isSticker = true;
-  createStickerButton.style.display = "none";
-  showCustomAlert("Sticker Mode", "This image will be sent as a sticker!");
-}
-
     // HTML escape function
     function escapeHtml(text) {
       return text
@@ -1404,6 +1471,7 @@ function createSticker() {
     fetchUserData();
     loadMessages();
     loadStickers();
+    updateCharCounter();
   </script>
 </body>
 </html>
