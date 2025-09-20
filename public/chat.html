@@ -832,71 +832,32 @@
   </div>
 
   <script>
-    async function loadUserProfile() {
-      try {
-        const response = await fetch('/user/id/478135254');
-        const userData = await response.json();
-        
-        document.getElementById('user-display-name').textContent = userData.name || 'Unknown User';
-        document.getElementById('user-username').textContent = `@${userData.username || 'unknown'}`;
-        document.getElementById('user-avatar').src = userData.profileimg || 'https://example.com/default-profile.png';
-        
-        if (userData.verified) {
-          document.getElementById('verified-badge').style.display = 'inline';
-        }
-        
-        // Update online status based on last activity
-        const lastActivity = new Date(userData.logdate);
-        const now = new Date();
-        const timeDiff = now - lastActivity;
-        const minutesDiff = Math.floor(timeDiff / (1000 * 60));
-        
-        const statusElement = document.getElementById('user-status');
-        if (minutesDiff < 5) {
-          statusElement.textContent = 'online';
-          statusElement.style.color = '#4ade80';
-        } else if (minutesDiff < 60) {
-          statusElement.textContent = `last seen ${minutesDiff}m ago`;
-          statusElement.style.color = '#fbbf24';
-        } else {
-          const hoursDiff = Math.floor(minutesDiff / 60);
-          statusElement.textContent = `last seen ${hoursDiff}h ago`;
-          statusElement.style.color = '#94a3b8';
-        }
-      } catch (error) {
-        console.error('Failed to load user profile:', error);
-        document.getElementById('user-display-name').textContent = 'User';
-        document.getElementById('user-username').textContent = '@user';
-      }
-    }
-
-    // Removed socket.io and related logic as it's not used in the new implementation
-    // const socket = io();
-    // let isLoading = false;
-    // let earliestTimestamp = null;
-    // let replyingTo = null;
-    // let typingTimeout = null;
-    // let recipientData = null;
-    // let isSticker = false;
-    // const MAX_CHARS = 1000; // Character limit
+    const socket = io();
+    let isLoading = false;
+    let earliestTimestamp = null;
+    let replyingTo = null;
+    let typingTimeout = null;
+    let recipientData = null;
+    let isSticker = false;
+    const MAX_CHARS = 1000;
 
     // Get recipientId and authToken
-    // const params = window.location.pathname.split("/");
-    // const recipientId = params[params.length - 1];
-    // const authToken = localStorage.getItem("authToken");
+    const params = window.location.pathname.split("/");
+    const recipientId = params[params.length - 1];
+    const authToken = localStorage.getItem("authToken");
 
-    // console.log("authToken:", authToken);
-    // console.log("recipientId:", recipientId);
+    console.log("authToken:", authToken);
+    console.log("recipientId:", recipientId);
 
-    // if (!authToken) {
-    //   showCustomAlert("Authentication Required", "No authToken found in localStorage. Please log in first.");
-    //   setTimeout(() => window.location.href = "/login", 2000);
-    // }
+    if (!authToken) {
+      showCustomAlert("Authentication Required", "No authToken found in localStorage. Please log in first.");
+      setTimeout(() => window.location.href = "/login", 2000);
+    }
 
-    // if (!recipientId || isNaN(recipientId)) {
-    //   showCustomAlert("Invalid Recipient", "Invalid recipient ID in URL.");
-    //   setTimeout(() => window.location.href = "/chats.html", 2000);
-    // }
+    if (!recipientId || isNaN(recipientId)) {
+      showCustomAlert("Invalid Recipient", "Invalid recipient ID in URL.");
+      setTimeout(() => window.location.href = "/chats.html", 2000);
+    }
 
     // Custom alert modal function
     function showCustomAlert(title, message) {
@@ -912,1002 +873,525 @@
       document.body.appendChild(overlay);
     }
 
-    // Fetch recipient details
-    // async function fetchRecipient() {
-    //   try {
-    //     const res = await fetch(`/user/id/${recipientId}`);
-    //     const data = await res.json();
-    //     if (res.ok) {
-    //       recipientData = data;
-    //       document.getElementById("recipient-name").innerHTML = `
-    //         ${escapeHtml(data.name || data.username)} 
-    //         ${data.verified ? '<span class="verified-icon">✓</span>' : ''}
-    //       `;
-    //     } else {
-    //       console.error("Error fetching recipient:", data.error);
-    //       document.getElementById("recipient-name").textContent = "Unknown User";
-    //     }
-    //   } catch (err) {
-    //     console.error("Error fetching recipient:", err);
-    //     document.getElementById("recipient-name").textContent = "Error";
-    //   }
-    // }
+    async function fetchRecipient() {
+      try {
+        const res = await fetch(`/user/id/${recipientId}`);
+        const data = await res.json();
+        if (res.ok) {
+          recipientData = data;
+          document.getElementById("recipient-name").innerHTML = `
+            ${escapeHtml(data.name || data.username)} 
+            ${data.verified ? '<img src="/verified.png" alt="Verified" class="verified-badge">' : ''}
+          `;
+        } else {
+          console.error("Error fetching recipient:", data.error);
+          document.getElementById("recipient-name").textContent = "Unknown User";
+        }
+      } catch (err) {
+        console.error("Error fetching recipient:", err);
+        document.getElementById("recipient-name").textContent = "Error";
+      }
+    }
+
+    async function fetchUserData() {
+      try {
+        const response = await fetch('/user/id/478135254');
+        const userData = await response.json();
+        
+        document.getElementById('user-display-name').textContent = userData.name || 'Unknown User';
+        document.getElementById('user-username').textContent = `@${userData.username || 'unknown'}`;
+        document.getElementById('user-avatar').src = userData.profileimg || 'https://example.com/default-profile.png';
+        
+        if (userData.verified) {
+          document.getElementById('verified-badge').style.display = 'inline';
+        }
+        
+        // Update online status based on last activity
+        const lastActivity = new Date(userData.logdate);
+        const now = new Date();
+        const diffMinutes = (now - lastActivity) / (1000 * 60);
+        
+        const statusElement = document.getElementById('user-status');
+        if (diffMinutes < 5) {
+          statusElement.textContent = 'Online';
+          statusElement.className = 'user-status online';
+        } else if (diffMinutes < 60) {
+          statusElement.textContent = `Last seen ${Math.floor(diffMinutes)} minutes ago`;
+          statusElement.className = 'user-status away';
+        } else {
+          const diffHours = Math.floor(diffMinutes / 60);
+          statusElement.textContent = `Last seen ${diffHours} hours ago`;
+          statusElement.className = 'user-status offline';
+        }
+      } catch (error) {
+        console.error('Error fetching user data:', error);
+      }
+    }
 
     // Join user room
-    // socket.emit("joinUserRoom", authToken);
+    socket.emit("joinUserRoom", authToken);
 
     // Load messages with loading indicator
-    // async function loadMessages(before = null) {
-    //   if (isLoading) return;
-    //   isLoading = true;
+    async function loadMessages(before = null) {
+      if (isLoading) return;
+      isLoading = true;
 
-    //   // Show loading indicator for older messages
-    //   if (before) {
-    //     const loadingDiv = document.createElement('div');
-    //     loadingDiv.className = 'upload-progress';
-    //     loadingDiv.innerHTML = '<div class="loading-spinner"></div> Loading older messages...';
-    //     loadingDiv.id = 'loading-messages';
-    //     document.getElementById('messages').insertBefore(loadingDiv, document.getElementById('messages').firstChild);
-    //   }
+      // Show loading indicator for older messages
+      if (before) {
+        const loadingDiv = document.createElement('div');
+        loadingDiv.className = 'upload-progress';
+        loadingDiv.innerHTML = '<div class="loading-spinner"></div> Loading older messages...';
+        loadingDiv.id = 'loading-messages';
+        document.getElementById('messages').insertBefore(loadingDiv, document.getElementById('messages').firstChild);
+      }
 
-    //   try {
-    //     const url = before 
-    //       ? `/messages/${recipientId}?authToken=${encodeURIComponent(authToken)}&limit=20&before=${encodeURIComponent(before)}`
-    //       : `/messages/${recipientId}?authToken=${encodeURIComponent(authToken)}&limit=20`;
-    //     console.log("Fetching messages from:", url);
-    //     const res = await fetch(url);
-    //     const data = await res.json();
+      try {
+        const url = before 
+          ? `/messages/${recipientId}?authToken=${encodeURIComponent(authToken)}&limit=20&before=${encodeURIComponent(before)}`
+          : `/messages/${recipientId}?authToken=${encodeURIComponent(authToken)}&limit=20`;
+        console.log("Fetching messages from:", url);
+        const res = await fetch(url);
+        const data = await res.json();
 
-    //     if (res.ok) {
-    //       console.log("Messages received:", data);
-    //       const noMessagesDiv = document.getElementById("no-messages");
-    //       if (data.length === 0 && !before) {
-    //         noMessagesDiv.style.display = "block";
-    //       } else {
-    //         noMessagesDiv.style.display = "none";
-    //         // Reverse messages to show newest at bottom
-    //         renderMessages(data.reverse(), recipientId, !before);
-    //         if (data.length > 0) {
-    //           earliestTimestamp = data[0].timestamp;
-    //         }
-    //       }
-    //     } else {
-    //       console.error("Error fetching messages:", data.error);
-    //       showCustomAlert("Error", data.error || "Failed to load messages");
-    //     }
-    //   } catch (err) {
-    //     console.error("Request failed:", err);
-    //     showCustomAlert("Error", "Error fetching messages");
-    //   } finally {
-    //     isLoading = false;
-    //     // Remove loading indicator
-    //     const loadingDiv = document.getElementById('loading-messages');
-    //     if (loadingDiv) loadingDiv.remove();
-    //   }
-    // }
+        if (res.ok) {
+          console.log("Messages received:", data);
+          const noMessagesDiv = document.getElementById("no-messages");
+          if (data.length === 0 && !before) {
+            noMessagesDiv.style.display = "block";
+          } else {
+            noMessagesDiv.style.display = "none";
+            renderMessages(data.reverse(), recipientId, !before);
+            if (data.length > 0) {
+              earliestTimestamp = data[0].timestamp;
+            }
+          }
+        } else {
+          console.error("Error fetching messages:", data.error);
+          showCustomAlert("Error", data.error || "Failed to load messages");
+        }
+      } catch (err) {
+        console.error("Request failed:", err);
+        showCustomAlert("Error", "Error fetching messages");
+      } finally {
+        isLoading = false;
+        // Remove loading indicator
+        const loadingDiv = document.getElementById('loading-messages');
+        if (loadingDiv) loadingDiv.remove();
+      }
+    }
 
     // Fetch message metadata for replies
-    // async function fetchMessageMetadata(messageId) {
-    //   try {
-    //     const res = await fetch(`/get/${messageId}?authToken=${encodeURIComponent(authToken)}`);
-    //     const data = await res.json();
-    //     if (res.ok) {
-    //       console.log("Message metadata:", data);
-    //       return data;
-    //     } else {
-    //       console.error("Error fetching message metadata:", data.error);
-    //       return null;
-    //     }
-    //   } catch (err) {
-    //     console.error("Error fetching message metadata:", err);
-    //     return null;
-    //   }
-    // }
-
-    // async function renderMessages(messages, recipientId, append = true) {
-    //   const container = document.getElementById("messages");
-    //   const wasAtBottom = container.scrollTop + container.clientHeight >= container.scrollHeight - 10;
-
-    //   for (const msg of messages) {
-    //     const div = document.createElement("div");
-    //     div.classList.add("message");
-    //     div.dataset.messageId = msg.id;
-    //     const isSender = (msg.senderId !== Number(recipientId));
-    //     div.classList.add(isSender ? "sent" : "received");
-        
-    //     // Add verified message styling
-    //     if (msg.senderVerified) {
-    //       div.classList.add("verified-message");
-    //     }
-
-    //     let content = "";
-    //     content += `
-    //       <div class="username">
-    //         ${escapeHtml(msg.senderName || msg.senderUsername || "Unknown")}
-    //         ${msg.senderVerified ? '<span class="verified-icon">✓</span>' : ''}
-    //       </div>
-    //     `;
-
-    //     if (msg.replyTo) {
-    //       const replyData = await fetchMessageMetadata(msg.replyTo);
-    //       if (replyData) {
-    //         const replyText = replyData.text || "";
-    //         let mediaPreview = "";
-    //         if (replyData.fileUrl) {
-    //           if (replyData.fileType?.startsWith("image") || replyData.issticker) {
-    //             mediaPreview = `<img src="${replyData.fileUrl}" alt="Media">`;
-    //           } else if (replyData.fileType?.startsWith("video")) {
-    //             mediaPreview = `<video src="${replyData.fileUrl}"></video>`;
-    //           } else if (replyData.fileType?.startsWith("audio")) {
-    //             mediaPreview = `<span>[Audio]</span>`;
-    //           } else {
-    //             mediaPreview = `<span>[File]</span>`;
-    //           }
-    //         }
-    //         content += `
-    //           <div class="reply-preview">
-    //             ${mediaPreview}
-    //             ${escapeHtml(replyData.senderName || replyData.senderUsername || "Unknown")}
-    //             ${replyData.senderVerified ? '<span class="verified-icon">✓</span>' : ''}: 
-    //             ${escapeHtml(replyText.slice(0, 50))}${replyText.length > 50 ? "..." : ""}
-    //           </div>
-    //         `;
-    //       }
-    //     }
-
-    //     if (msg.fileUrl) {
-    //       if (msg.issticker) {
-    //         content += `<img src="${msg.fileUrl}" alt="Sticker" class="sticker">`;
-    //       } else if (msg.fileType?.startsWith("image")) {
-    //         content += `<img src="${msg.fileUrl}" alt="Image">`;
-    //       } else if (msg.fileType?.startsWith("video")) {
-    //         // Enhanced video controls
-    //         content += `<video controls preload="metadata" src="${msg.fileUrl}"></video>`;
-    //       } else if (msg.fileType?.startsWith("audio")) {
-    //         // Enhanced audio controls
-    //         content += `<audio controls preload="metadata" src="${msg.fileUrl}"></audio>`;
-    //       } else {
-    //         content += `<a href="${msg.fileUrl}" target="_blank">Download file</a>`;
-    //       }
-    //     }
-    //     if (msg.text) {
-    //       const formattedText = escapeHtml(msg.text).replace(/\n/g, "<br>");
-    //       content += `<div class="message-text">${formattedText}</div>`;
-    //     }
-
-    //     div.innerHTML = `
-    //       ${content || "[Media]"}
-    //       <div class="meta">
-    //         ${new Date(msg.timestamp).toLocaleString()}
-    //       </div>
-    //     `;
-
-    //     div.addEventListener("click", () => {
-    //       replyingTo = { id: msg.id, text: msg.text || "[Media]", sender: msg.senderName || msg.senderUsername || "Unknown" };
-    //       updateReplyPreview();
-    //     });
-
-    //     if (append) {
-    //       container.appendChild(div);
-    //     } else {
-    //       container.insertBefore(div, container.firstChild);
-    //     }
-
-    //     if (msg.replies && msg.replies.length > 0) {
-    //       msg.replies.forEach(reply => {
-    //         const replyDiv = document.createElement("div");
-    //         replyDiv.classList.add("message", "received");
-    //         replyDiv.style.marginLeft = "30px";
-    //         replyDiv.style.background = "rgba(255, 255, 255, 0.03)";
-    //         replyDiv.dataset.messageId = reply.id;
-
-    //         if (reply.senderVerified) {
-    //           replyDiv.classList.add("verified-message");
-    //         }
-
-    //         let replyContent = `
-    //           <div class="username">
-    //             ${escapeHtml(reply.senderName || reply.senderUsername || "Unknown")}
-    //             ${reply.senderVerified ? '<span class="verified-icon">✓</span>' : ''}
-    //           </div>
-    //         `;
-
-    //         if (reply.replyTo) {
-    //           replyContent += `
-    //             <div class="reply-preview">
-    //               Reply to message ID ${reply.replyTo}
-    //             </div>
-    //           `;
-    //         }
-
-    //         if (reply.fileUrl) {
-    //           if (reply.issticker) {
-    //             replyContent += `<img src="${reply.fileUrl}" alt="Sticker" class="sticker">`;
-    //           } else if (reply.fileType?.startsWith("image")) {
-    //             replyContent += `<img src="${reply.fileUrl}" alt="Image">`;
-    //           } else if (reply.fileType?.startsWith("video")) {
-    //             replyContent += `<video controls preload="metadata" src="${reply.fileUrl}"></video>`;
-    //           } else if (reply.fileType?.startsWith("audio")) {
-    //             replyContent += `<audio controls preload="metadata" src="${reply.fileUrl}"></audio>`;
-    //           } else {
-    //             replyContent += `<a href="${reply.fileUrl}" target="_blank">Download file</a>`;
-    //           }
-    //         }
-    //         if (reply.text) {
-    //           const formattedReplyText = escapeHtml(reply.text).replace(/\n/g, "<br>");
-    //           replyContent += `<div class="message-text">${formattedReplyText}</div>`;
-    //         }
-
-    //         replyDiv.innerHTML = `
-    //           ${replyContent || "[Media]"}
-    //           <div class="meta">
-    //             ${new Date(reply.timestamp).toLocaleString()}
-    //           </div>
-    //         `;
-
-    //         replyDiv.addEventListener("click", () => {
-    //           replyingTo = { id: reply.id, text: reply.text || "[Media]", sender: reply.senderName || reply.senderUsername || "Unknown" };
-    //           updateReplyPreview();
-    //         });
-
-    //         if (append) {
-    //           container.appendChild(replyDiv);
-    //         } else {
-    //           container.insertBefore(replyDiv, container.firstChild);
-    //         }
-    //       });
-    //     }
-    //   }
-
-    //   if (append && wasAtBottom) {
-    //     container.scrollTop = container.scrollHeight;
-    //   }
-    // }
-
-    // Infinite scroll
-    // document.getElementById("messages").addEventListener("scroll", () => {
-    //   if (document.getElementById("messages").scrollTop < 50 && earliestTimestamp) {
-    //     loadMessages(earliestTimestamp);
-    //   }
-    // });
-
-    // WebSocket new message
-    // socket.on("newMessage", (msg) => {
-    //   console.log("New message received:", msg);
-    //   document.getElementById("no-messages").style.display = "none";
-    //   renderMessages([msg], recipientId, true);
-    // });
-
-    // Typing indicator
-    // socket.on("showTyping", ({ users }) => {
-    //   const typingIndicator = document.getElementById("typing-indicator");
-    //   if (users.length > 0) {
-    //     const names = users.map(u => (u.name || u.username) + (u.verified ? ' ✓' : '')).join(", ");
-    //     typingIndicator.textContent = `${names} ${users.length > 1 ? "are" : "is"} typing...`;
-    //   } else {
-    //     typingIndicator.textContent = "";
-    //   }
-    // });
-
-    // Load stickers from localStorage
-    // function loadStickers() {
-    //   const stickers = JSON.parse(localStorage.getItem("stickers") || "[]");
-    //   const container = document.getElementById("stickers-container");
-    //   container.innerHTML = "";
-    //   stickers.forEach(url => {
-    //     const img = document.createElement("img");
-    //     img.src = url;
-    //     img.alt = "Sticker";
-    //     img.addEventListener("click", () => sendSticker(url));
-    //     container.appendChild(img);
-    //   });
-    // }
-
-    // Save sticker to localStorage
-    // function saveSticker(url) {
-    //   const stickers = JSON.parse(localStorage.getItem("stickers") || "[]");
-    //   if (!stickers.includes(url)) {
-    //     stickers.push(url);
-    //     localStorage.setItem("stickers", JSON.stringify(stickers));
-    //     loadStickers();
-    //   }
-    // }
-
-    // Send sticker with loading indicator
-    // async function sendSticker(url) {
-    //   sendButton.disabled = true;
-      
-    //   // Show upload progress
-    //   const progressDiv = document.createElement('div');
-    //   progressDiv.className = 'upload-progress';
-    //   progressDiv.innerHTML = '<div class="loading-spinner"></div> Sending sticker...';
-    //   document.getElementById('input-container').insertBefore(progressDiv, document.getElementById('input-container').firstChild);
-      
-    //   try {
-    //     const response = await fetch(url);
-    //     const blob = await response.blob();
-    //     const fileBase64 = await new Promise((resolve) => {
-    //       const reader = new FileReader();
-    //       reader.onload = () => resolve(reader.result.split(",")[1]);
-    //       reader.readAsDataURL(blob);
-    //     });
-
-    //     const body = {
-    //       authToken,
-    //       text: "",
-    //       replyTo: replyingTo ? replyingTo.id : null,
-    //       fileBase64,
-    //       fileType: "image/png",
-    //       issticker: true
-    //     };
-
-    //     console.log("Sending sticker:", body);
-    //     const res = await fetch(`/message/${recipientId}`, {
-    //       method: "POST",
-    //       headers: { "Content-Type": "application/json" },
-    //       body: JSON.stringify(body)
-    //     });
-
-    //     const data = await res.json();
-    //     if (res.ok) {
-    //       console.log("Sticker sent successfully:", data);
-    //       replyingTo = null;
-    //       updateReplyPreview();
-    //     } else {
-    //       console.error("Error sending sticker:", data.error);
-    //       showCustomAlert("Error", data.error || "Failed to send sticker");
-    //     }
-    //   } catch (err) {
-    //     console.error("Error sending sticker:", err);
-    //     showCustomAlert("Error", "Error sending sticker");
-    //   } finally {
-    //     sendButton.disabled = false;
-    //     progressDiv.remove();
-    //   }
-    // }
-
-    // Send message
-    // const messageInput = document.getElementById("message-input");
-    // const sendButton = document.getElementById("send-button");
-    // const fileInput = document.getElementById("file-input");
-    // const fileButton = document.getElementById("file-button");
-    // const mediaPreview = document.getElementById("media-preview");
-    // const mediaPreviewContainer = document.getElementById("media-preview-container");
-    // const createStickerButton = document.getElementById("create-sticker-button");
-    // const stickersContainer = document.getElementById("stickers-container");
-    // const stickersToggle = document.getElementById("stickers-toggle");
-    // const charCounter = document.getElementById("char-counter");
-
-    // fileButton.addEventListener("click", () => {
-    //   fileInput.click();
-    // });
-
-    // fileInput.addEventListener("change", () => {
-    //   const file = fileInput.files[0];
-    //   if (file && file.type.startsWith("image")) {
-    //     const reader = new FileReader();
-    //     reader.onload = () => {
-    //       mediaPreview.src = reader.result;
-    //       mediaPreviewContainer.style.display = "flex";
-    //       isSticker = false;
-    //       createStickerButton.style.display = "inline-block";
-    //     };
-    //     reader.readAsDataURL(file);
-    //   } else {
-    //     clearMediaPreview();
-    //   }
-    // });
-
-    // createStickerButton.addEventListener("click", () => {
-    //   isSticker = true;
-    //   createStickerButton.style.display = "none";
-    // });
-
-    // stickersToggle.addEventListener("click", () => {
-    //   const isVisible = stickersContainer.style.display === "block";
-    //   stickersContainer.style.display = isVisible ? "none" : "block";
-    //   stickersToggle.classList.toggle("active", !isVisible);
-    // });
-
-    // function clearMediaPreview() {
-    //   fileInput.value = "";
-    //   mediaPreview.src = "";
-    //   mediaPreviewContainer.style.display = "none";
-    //   createStickerButton.style.display = "none";
-    //   isSticker = false;
-    // }
-
-    // Enhanced send message with validation and loading
-    // async function sendMessage() {
-    //   const text = messageInput.value.trim();
-    //   const file = fileInput.files[0];
-      
-    //   // Prevent empty messages
-    //   if (!text && !file) {
-    //     showCustomAlert("Empty Message", "Please enter a message or select a file to send.");
-    //     return;
-    //   }
-      
-    //   // Character limit validation
-    //   if (text.length > MAX_CHARS) {
-    //     showCustomAlert("Message Too Long", `Message exceeds ${MAX_CHARS} character limit.`);
-    //     return;
-    //   }
-      
-    //   sendButton.disabled = true;
-      
-    //   // Show upload progress
-    //   const progressDiv = document.createElement('div');
-    //   progressDiv.className = 'upload-progress';
-    //   progressDiv.innerHTML = '<div class="loading-spinner"></div> Sending message...';
-    //   document.getElementById('input-container').insertBefore(progressDiv, document.getElementById('input-container').firstChild);
-
-    //   try {
-    //     let fileBase64 = null;
-    //     let fileType = null;
-
-    //     if (file) {
-    //       fileBase64 = await new Promise((resolve) => {
-    //         const reader = new FileReader();
-    //         reader.onload = () => resolve(reader.result.split(",")[1]);
-    //         reader.readAsDataURL(file);
-    //       });
-    //       fileType = file.type;
-    //     }
-
-    //     const body = {
-    //       authToken,
-    //       text: text || "",
-    //       replyTo: replyingTo ? replyingTo.id : null,
-    //       fileBase64,
-    //       fileType,
-    //       issticker: isSticker
-    //     };
-
-    //     console.log("Sending message:", body);
-    //     const res = await fetch(`/message/${recipientId}`, {
-    //       method: "POST",
-    //       headers: { "Content-Type": "application/json" },
-    //       body: JSON.stringify(body)
-    //     });
-
-    //     const data = await res.json();
-    //     if (res.ok) {
-    //       console.log("Message sent successfully:", data);
-    //       if (isSticker && data.data.fileUrl) {
-    //         saveSticker(data.data.fileUrl);
-    //       }
-    //       messageInput.value = "";
-    //       updateCharCounter();
-    //       clearMediaPreview();
-    //       replyingTo = null;
-    //       updateReplyPreview();
-    //     } else {
-    //       console.error("Error sending message:", data.error);
-    //       showCustomAlert("Error", data.error || "Failed to send message");
-    //     }
-    //   } catch (err) {
-    //     console.error("Error sending message:", err);
-    //     showCustomAlert("Error", "Error sending message");
-    //   } finally {
-    //     sendButton.disabled = false;
-    //     progressDiv.remove();
-    //   }
-    // }
-
-    // Character counter update function
-    // function updateCharCounter() {
-    //   const length = messageInput.value.length;
-    //   charCounter.textContent = `${length}/${MAX_CHARS}`;
-      
-    //   charCounter.className = 'char-counter';
-    //   if (length > MAX_CHARS * 0.9) {
-    //     charCounter.classList.add('warning');
-    //   }
-    //   if (length > MAX_CHARS) {
-    //     charCounter.classList.add('error');
-    //     sendButton.disabled = true;
-    //   } else {
-    //     sendButton.disabled = false;
-    //   }
-    // }
-
-    // sendButton.addEventListener("click", sendMessage);
-    // messageInput.addEventListener("keypress", (e) => {
-    //   if (e.key === "Enter" && e.shiftKey) {
-    //     e.preventDefault();
-    //     sendMessage();
-    //   }
-    // });
-
-    // Enhanced input handling with character counter
-    // messageInput.addEventListener("input", () => {
-    //   messageInput.style.height = "auto";
-    //   messageInput.style.height = `${Math.min(messageInput.scrollHeight, 150)}px`;
-      
-    //   updateCharCounter();
-
-    //   socket.emit("typing", { room: `user_${recipientId}`, authToken });
-    //   clearTimeout(typingTimeout);
-    //   typingTimeout = setTimeout(() => {
-    //     socket.emit("stopTyping", { room: `user_${recipientId}`, authToken });
-    //   }, 5000);
-    // });
-
-    // Reply preview
-    // function updateReplyPreview() {
-    //   const replyPreview = document.getElementById("reply-input-preview");
-    //   if (replyingTo) {
-    //     replyPreview.style.display = "block";
-    //     replyPreview.innerHTML = `
-    //       Replying to ${escapeHtml(replyingTo.sender)}: ${escapeHtml(replyingTo.text.slice(0, 50))}...
-    //       <button onclick="cancelReply()">✕</button>
-    //     `;
-    //   } else {
-    //     replyPreview.style.display = "none";
-    //     replyPreview.innerHTML = "";
-    //   }
-    // }
-
-    // function cancelReply() {
-    //   replyingTo = null;
-    //   updateReplyPreview();
-    // }
-
-    // HTML escape function
-    // function escapeHtml(text) {
-    //   return text
-    //     .replace(/&/g, "&amp;")
-    //     .replace(/</g, "&lt;")
-    //     .replace(/>/g, "&gt;");
-    // }
-
-    // Initial load
-    // fetchRecipient();
-    // loadMessages();
-    // loadStickers();
-    // updateCharCounter();
-
-    // New implementation using localStorage for messages and local simulation
-    let messages = JSON.parse(localStorage.getItem('chatMessages')) || [];
-    let replyingTo = null;
-    let selectedMedia = null;
-    let typingTimeout;
-    let isTyping = false;
-
-    // Load messages and user profile on page load
-    window.addEventListener('load', function() {
-      loadUserProfile();
-      loadMessages();
-      loadStickers();
-      setupMessageInput();
-    });
-
-    function loadMessages() {
-      const messagesContainer = document.getElementById('messages');
-      const noMessages = document.getElementById('no-messages');
-      
-      if (messages.length === 0) {
-        noMessages.style.display = 'block';
-        return;
-      }
-      
-      noMessages.style.display = 'none';
-      messagesContainer.innerHTML = '';
-      
-      messages.forEach(message => {
-        displayMessage(message);
-      });
-      
-      scrollToBottom();
-    }
-
-    function displayMessage(message) {
-      const messagesContainer = document.getElementById('messages');
-      const messageDiv = document.createElement('div');
-      messageDiv.className = `message ${message.type}`;
-      messageDiv.onclick = () => replyToMessage(message);
-      
-      if (message.verified) {
-        messageDiv.classList.add('verified-message');
-      }
-      
-      let messageHTML = '';
-      
-      if (message.username) {
-        messageHTML += `<div class="username">${message.username}`;
-        if (message.verified) {
-          messageHTML += `<span class="verified-icon">✓</span>`;
+    async function fetchMessageMetadata(messageId) {
+      try {
+        const res = await fetch(`/get/${messageId}?authToken=${encodeURIComponent(authToken)}`);
+        const data = await res.json();
+        if (res.ok) {
+          console.log("Message metadata:", data);
+          return data;
+        } else {
+          console.error("Error fetching message metadata:", data.error);
+          return null;
         }
-        messageHTML += `</div>`;
+      } catch (err) {
+        console.error("Error fetching message metadata:", err);
+        return null;
       }
-      
-      if (message.replyTo) {
-        messageHTML += `<div class="reply-preview">
-          <span>↳ ${message.replyTo.text || 'Media'}</span>
-        </div>`;
-      }
-      
-      if (message.media) {
-        if (message.media.type.startsWith('image/')) {
-          messageHTML += `<img src="${message.media.url}" alt="Image" loading="lazy">`;
-        } else if (message.media.type.startsWith('video/')) {
-          messageHTML += `<video src="${message.media.url}" controls></video>`;
-        } else if (message.media.type.startsWith('audio/')) {
-          messageHTML += `<audio src="${message.media.url}" controls></audio>`;
+    }
+
+    async function renderMessages(messages, recipientId, append = true) {
+      const container = document.getElementById("messages");
+      const wasAtBottom = container.scrollTop + container.clientHeight >= container.scrollHeight - 10;
+
+      for (const msg of messages) {
+        const div = document.createElement("div");
+        div.classList.add("message");
+        div.dataset.messageId = msg.id;
+        const isSender = (msg.senderId !== Number(recipientId));
+        div.classList.add(isSender ? "sent" : "received");
+        
+        if (msg.senderVerified) {
+          div.classList.add("verified-message");
         }
-      }
-      
-      if (message.sticker) {
-        messageHTML += `<img src="${message.sticker}" class="sticker" alt="Sticker">`;
-      }
-      
-      if (message.text) {
-        messageHTML += `<div class="message-text">${escapeHtml(message.text)}</div>`;
-      }
-      
-      messageHTML += `<div class="meta">${formatTime(message.timestamp)}</div>`;
-      
-      messageDiv.innerHTML = messageHTML;
-      messagesContainer.appendChild(messageDiv);
-    }
 
-    function sendMessage() {
-      const input = document.getElementById('message-input');
-      const text = input.value.trim();
-      
-      if (!text && !selectedMedia) return;
-      
-      const message = {
-        id: Date.now(),
-        text: text,
-        timestamp: new Date().toISOString(),
-        type: 'sent',
-        username: 'You',
-        verified: false,
-        media: selectedMedia,
-        replyTo: replyingTo
-      };
-      
-      messages.push(message);
-      localStorage.setItem('chatMessages', JSON.stringify(messages));
-      
-      displayMessage(message);
-      
-      input.value = '';
-      selectedMedia = null;
-      replyingTo = null;
-      
-      clearMediaPreview();
-      cancelReply();
-      updateCharCounter();
-      scrollToBottom();
-      
-      // Auto-resize textarea
-      input.style.height = 'auto';
-      
-      // Simulate received message
-      setTimeout(() => {
-        simulateReceivedMessage();
-      }, 1000 + Math.random() * 2000);
-    }
+        let content = "";
+        content += `
+          <div class="username">
+            ${escapeHtml(msg.senderName || msg.senderUsername || "Unknown")}
+            ${msg.senderVerified ? '<img src="/verified.png" alt="Verified" class="verified-badge">' : ''}
+          </div>
+        `;
 
-    function simulateReceivedMessage() {
-      const responses = [
-        "That's interesting!",
-        "I see what you mean.",
-        "Thanks for sharing!",
-        "Got it!",
-        "Sounds good!",
-        "Nice!",
-        "👍",
-        "Absolutely!",
-        "I agree.",
-        "That makes sense."
-      ];
-      
-      const message = {
-        id: Date.now(),
-        text: responses[Math.floor(Math.random() * responses.length)],
-        timestamp: new Date().toISOString(),
-        type: 'received',
-        username: 'Friend',
-        verified: Math.random() > 0.7
-      };
-      
-      messages.push(message);
-      localStorage.setItem('chatMessages', JSON.stringify(messages));
-      
-      displayMessage(message);
-      scrollToBottom();
-    }
-
-    function handleFileSelect(event) {
-      const file = event.target.files[0];
-      if (!file) return;
-      
-      // Check file size (10MB limit)
-      if (file.size > 10 * 1024 * 1024) {
-        alert('File size must be less than 10MB');
-        return;
-      }
-      
-      const reader = new FileReader();
-      reader.onload = function(e) {
-        selectedMedia = {
-          url: e.target.result,
-          type: file.type,
-          name: file.name
-        };
-        
-        showMediaPreview();
-      };
-      
-      reader.readAsDataURL(file);
-    }
-
-    function showMediaPreview() {
-      if (!selectedMedia) return;
-      
-      const container = document.getElementById('media-preview-container');
-      const preview = document.getElementById('media-preview');
-      
-      preview.src = selectedMedia.url;
-      container.style.display = 'flex';
-    }
-
-    function clearMediaPreview() {
-      const container = document.getElementById('media-preview-container');
-      container.style.display = 'none';
-      selectedMedia = null;
-      document.getElementById('file-input').value = '';
-    }
-
-    function replyToMessage(message) {
-      replyingTo = {
-        id: message.id,
-        text: message.text,
-        username: message.username
-      };
-      
-      const preview = document.getElementById('reply-input-preview');
-      const previewText = document.getElementById('reply-preview-text');
-      
-      previewText.textContent = `${message.username}: ${message.text || 'Media'}`;
-      preview.style.display = 'flex';
-      
-      document.getElementById('message-input').focus();
-    }
-
-    function cancelReply() {
-      replyingTo = null;
-      document.getElementById('reply-input-preview').style.display = 'none';
-    }
-
-    function setupMessageInput() {
-      const input = document.getElementById('message-input');
-      const sendButton = document.getElementById('send-button');
-      
-      input.addEventListener('input', function() {
-        // Auto-resize
-        this.style.height = 'auto';
-        this.style.height = Math.min(this.scrollHeight, 150) + 'px';
-        
-        updateCharCounter();
-        handleTyping();
-        
-        // Enable/disable send button
-        const hasContent = this.value.trim() || selectedMedia;
-        sendButton.disabled = !hasContent;
-      });
-      
-      input.addEventListener('keydown', function(e) {
-        if (e.key === 'Enter' && !e.shiftKey) {
-          e.preventDefault();
-          if (!sendButton.disabled) {
-            sendMessage();
+        if (msg.replyTo) {
+          const replyData = await fetchMessageMetadata(msg.replyTo);
+          if (replyData) {
+            const replyText = replyData.text || "";
+            let mediaPreview = "";
+            if (replyData.fileUrl) {
+              if (replyData.fileType?.startsWith("image") || replyData.issticker) {
+                mediaPreview = `<img src="${replyData.fileUrl}" alt="Media">`;
+              } else if (replyData.fileType?.startsWith("video")) {
+                mediaPreview = `<video src="${replyData.fileUrl}"></video>`;
+              } else if (replyData.fileType?.startsWith("audio")) {
+                mediaPreview = `<span>[Audio]</span>`;
+              } else {
+                mediaPreview = `<span>[File]</span>`;
+              }
+            }
+            content += `
+              <div class="reply-preview">
+                ${mediaPreview}
+                ${escapeHtml(replyData.senderName || replyData.senderUsername || "Unknown")}
+                ${replyData.senderVerified ? '<img src="/verified.png" alt="Verified" class="verified-badge">' : ''}: 
+                ${escapeHtml(replyText.slice(0, 50))}${replyText.length > 50 ? "..." : ""}
+              </div>
+            `;
           }
         }
-      });
+
+        if (msg.fileUrl) {
+          if (msg.issticker) {
+            content += `<img src="${msg.fileUrl}" alt="Sticker" class="sticker">`;
+          } else if (msg.fileType?.startsWith("image")) {
+            content += `<img src="${msg.fileUrl}" alt="Image">`;
+          } else if (msg.fileType?.startsWith("video")) {
+            content += `<video controls preload="metadata" src="${msg.fileUrl}"></video>`;
+          } else if (msg.fileType?.startsWith("audio")) {
+            content += `<audio controls preload="metadata" src="${msg.fileUrl}"></audio>`;
+          } else {
+            content += `<a href="${msg.fileUrl}" target="_blank">Download file</a>`;
+          }
+        }
+        if (msg.text) {
+          const formattedText = escapeHtml(msg.text).replace(/\n/g, "<br>");
+          content += `<div class="message-text">${formattedText}</div>`;
+        }
+
+        div.innerHTML = `
+          ${content || "[Media]"}
+          <div class="meta">
+            ${new Date(msg.timestamp).toLocaleString()}
+          </div>
+        `;
+
+        div.addEventListener("click", () => {
+          replyingTo = { id: msg.id, text: msg.text || "[Media]", sender: msg.senderName || msg.senderUsername || "Unknown" };
+          updateReplyPreview();
+        });
+
+        if (append) {
+          container.appendChild(div);
+        } else {
+          container.insertBefore(div, container.firstChild);
+        }
+      }
+
+      if (append && wasAtBottom) {
+        container.scrollTop = container.scrollHeight;
+      }
     }
 
-    function updateCharCounter() {
-      const input = document.getElementById('message-input');
-      const counter = document.getElementById('char-counter');
-      const length = input.value.length;
-      const maxLength = 4000;
-      
-      counter.textContent = `${length}/${maxLength}`;
-      
-      if (length > maxLength * 0.9) {
-        counter.className = 'char-counter error';
-      } else if (length > maxLength * 0.8) {
-        counter.className = 'char-counter warning';
+    // Scroll to load older messages
+    document.getElementById("messages").addEventListener("scroll", () => {
+      if (document.getElementById("messages").scrollTop < 50 && earliestTimestamp) {
+        loadMessages(earliestTimestamp);
+      }
+    });
+
+    // WebSocket new message
+    socket.on("newMessage", (msg) => {
+      console.log("New message received:", msg);
+      document.getElementById("no-messages").style.display = "none";
+      renderMessages([msg], recipientId, true);
+    });
+
+    socket.on("showTyping", ({ users }) => {
+      const typingIndicator = document.getElementById("typing-indicator");
+      if (users.length > 0) {
+        const names = users.map(u => (u.name || u.username) + (u.verified ? ' <img src="/verified.png" alt="Verified" class="verified-badge">' : '')).join(", ");
+        typingIndicator.innerHTML = `${names} ${users.length > 1 ? "are" : "is"} typing...`;
       } else {
-        counter.className = 'char-counter';
+        typingIndicator.textContent = "";
       }
-    }
+    });
 
-    function handleTyping() {
-      if (!isTyping) {
-        isTyping = true;
-        showTypingIndicator();
-      }
-      
-      clearTimeout(typingTimeout);
-      typingTimeout = setTimeout(() => {
-        isTyping = false;
-        hideTypingIndicator();
-      }, 1000);
-    }
-
-    function showTypingIndicator() {
-      const indicator = document.getElementById('typing-indicator');
-      indicator.textContent = 'You are typing...';
-      indicator.style.display = 'block';
-    }
-
-    function hideTypingIndicator() {
-      const indicator = document.getElementById('typing-indicator');
-      indicator.style.display = 'none';
-    }
-
-    function clearChat() {
-      if (confirm('Are you sure you want to clear all messages?')) {
-        messages = [];
-        localStorage.removeItem('chatMessages');
-        document.getElementById('messages').innerHTML = '';
-        document.getElementById('no-messages').style.display = 'block';
-      }
-    }
-
-    function exportChat() {
-      const chatData = {
-        messages: messages,
-        exportDate: new Date().toISOString(),
-        totalMessages: messages.length
-      };
-      
-      const blob = new Blob([JSON.stringify(chatData, null, 2)], {
-        type: 'application/json'
-      });
-      
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `chat-export-${new Date().toISOString().split('T')[0]}.json`;
-      a.click();
-      
-      URL.revokeObjectURL(url);
-    }
-
-    function createSticker() {
-      const canvas = document.createElement('canvas');
-      const ctx = canvas.getContext('2d');
-      
-      canvas.width = 200;
-      canvas.height = 200;
-      
-      // Create a simple sticker design
-      const gradient = ctx.createRadialGradient(100, 100, 0, 100, 100, 100);
-      gradient.addColorStop(0, '#404040');
-      gradient.addColorStop(1, '#202020');
-      
-      ctx.fillStyle = gradient;
-      ctx.fillRect(0, 0, 200, 200);
-      
-      ctx.fillStyle = '#ffffff';
-      ctx.font = 'bold 24px Arial';
-      ctx.textAlign = 'center';
-      ctx.fillText('😊', 100, 110);
-      
-      const stickerUrl = canvas.toDataURL();
-      
-      // Save to stickers
-      let stickers = JSON.parse(localStorage.getItem('customStickers')) || [];
-      stickers.push(stickerUrl);
-      localStorage.setItem('customStickers', JSON.stringify(stickers));
-      
-      loadStickers();
-      
-      // Send as message
-      const message = {
-        id: Date.now(),
-        timestamp: new Date().toISOString(),
-        type: 'sent',
-        username: 'You',
-        verified: false,
-        sticker: stickerUrl
-      };
-      
-      messages.push(message);
-      localStorage.setItem('chatMessages', JSON.stringify(messages));
-      
-      displayMessage(message);
-      scrollToBottom();
-    }
-
+    // Load stickers from localStorage
     function loadStickers() {
-      const container = document.getElementById('stickers-container');
-      const customStickers = JSON.parse(localStorage.getItem('customStickers')) || [];
-      
-      // Default stickers
-      const defaultStickers = [
-        'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="50" cy="50" r="40" fill="%23404040"/><text x="50" y="60" text-anchor="middle" font-size="30">😊</text></svg>',
-        'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="50" cy="50" r="40" fill="%23404040"/><text x="50" y="60" text-anchor="middle" font-size="30">👍</text></svg>',
-        'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="50" cy="50" r="40" fill="%23404040"/><text x="50" y="60" text-anchor="middle" font-size="30">❤️</text></svg>'
-      ];
-      
-      const allStickers = [...defaultStickers, ...customStickers];
-      
-      container.innerHTML = '';
-      allStickers.forEach(stickerUrl => {
-        const img = document.createElement('img');
-        img.src = stickerUrl;
-        img.onclick = () => sendSticker(stickerUrl);
+      const stickers = JSON.parse(localStorage.getItem("stickers") || "[]");
+      const container = document.getElementById("stickers-container");
+      container.innerHTML = "";
+      stickers.forEach(url => {
+        const img = document.createElement("img");
+        img.src = url;
+        img.alt = "Sticker";
+        img.addEventListener("click", () => sendSticker(url));
         container.appendChild(img);
       });
     }
 
-    function sendSticker(stickerUrl) {
-      const message = {
-        id: Date.now(),
-        timestamp: new Date().toISOString(),
-        type: 'sent',
-        username: 'You',
-        verified: false,
-        sticker: stickerUrl
-      };
-      
-      messages.push(message);
-      localStorage.setItem('chatMessages', JSON.stringify(messages));
-      
-      displayMessage(message);
-      scrollToBottom();
-      
-      // Hide stickers
-      toggleStickers();
-    }
-
-    function toggleStickers() {
-      const container = document.getElementById('stickers-container');
-      const toggle = document.getElementById('stickers-toggle');
-      
-      if (container.style.display === 'none' || !container.style.display) {
-        container.style.display = 'block';
-        toggle.classList.add('active');
-      } else {
-        container.style.display = 'none';
-        toggle.classList.remove('active');
+    // Save sticker to localStorage
+    function saveSticker(url) {
+      const stickers = JSON.parse(localStorage.getItem("stickers") || "[]");
+      if (!stickers.includes(url)) {
+        stickers.push(url);
+        localStorage.setItem("stickers", JSON.stringify(stickers));
+        loadStickers();
       }
     }
 
-    function scrollToBottom() {
-      const messages = document.getElementById('messages');
-      messages.scrollTop = messages.scrollHeight;
-    }
-
-    function formatTime(timestamp) {
-      const date = new Date(timestamp);
-      return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    }
-
-    function escapeHtml(text) {
-      const div = document.createElement('div');
-      div.textContent = text;
-      return div.innerHTML;
-    }
-
-    // Close stickers when clicking outside
-    document.addEventListener('click', function(e) {
-      const stickersContainer = document.getElementById('stickers-container');
-      const stickersToggle = document.getElementById('stickers-toggle');
+    // Send sticker with loading indicator
+    async function sendSticker(url) {
+      sendButton.disabled = true;
       
-      if (!stickersContainer.contains(e.target) && !stickersToggle.contains(e.target)) {
-        stickersContainer.style.display = 'none';
-        stickersToggle.classList.remove('active');
+      // Show upload progress
+      const progressDiv = document.createElement('div');
+      progressDiv.className = 'upload-progress';
+      progressDiv.innerHTML = '<div class="loading-spinner"></div> Sending sticker...';
+      document.getElementById('input-container').insertBefore(progressDiv, document.getElementById('input-container').firstChild);
+      
+      try {
+        const response = await fetch(url);
+        const blob = await response.blob();
+        const fileBase64 = await new Promise((resolve) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result.split(",")[1]);
+          reader.readAsDataURL(blob);
+        });
+
+        const body = {
+          authToken,
+          text: "",
+          replyTo: replyingTo ? replyingTo.id : null,
+          fileBase64,
+          fileType: "image/png",
+          issticker: true
+        };
+
+        console.log("Sending sticker:", body);
+        const res = await fetch(`/message/${recipientId}`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body)
+        });
+
+        const data = await res.json();
+        if (res.ok) {
+          console.log("Sticker sent successfully:", data);
+          replyingTo = null;
+          updateReplyPreview();
+        } else {
+          console.error("Error sending sticker:", data.error);
+          showCustomAlert("Error", data.error || "Failed to send sticker");
+        }
+      } catch (err) {
+        console.error("Error sending sticker:", err);
+        showCustomAlert("Error", "Error sending sticker");
+      } finally {
+        sendButton.disabled = false;
+        progressDiv.remove();
+      }
+    }
+
+    // Send message
+    const messageInput = document.getElementById("message-input");
+    const sendButton = document.getElementById("send-button");
+    const fileInput = document.getElementById("file-input");
+    const fileButton = document.getElementById("file-button");
+    const mediaPreview = document.getElementById("media-preview");
+    const mediaPreviewContainer = document.getElementById("media-preview-container");
+    const createStickerButton = document.getElementById("create-sticker-button");
+    const stickersContainer = document.getElementById("stickers-container");
+    const stickersToggle = document.getElementById("stickers-toggle");
+    const charCounter = document.getElementById("char-counter");
+
+    fileButton.addEventListener("click", () => {
+      fileInput.click();
+    });
+
+    fileInput.addEventListener("change", () => {
+      const file = fileInput.files[0];
+      if (file && file.type.startsWith("image")) {
+        const reader = new FileReader();
+        reader.onload = () => {
+          mediaPreview.src = reader.result;
+          mediaPreviewContainer.style.display = "flex";
+          isSticker = false;
+          createStickerButton.style.display = "inline-block";
+        };
+        reader.readAsDataURL(file);
+      } else {
+        clearMediaPreview();
       }
     });
+
+    createStickerButton.addEventListener("click", () => {
+      isSticker = true;
+      createStickerButton.style.display = "none";
+    });
+
+    stickersToggle.addEventListener("click", () => {
+      const isVisible = stickersContainer.style.display === "block";
+      stickersContainer.style.display = isVisible ? "none" : "block";
+      stickersToggle.classList.toggle("active", !isVisible);
+    });
+
+    function clearMediaPreview() {
+      fileInput.value = "";
+      mediaPreview.src = "";
+      mediaPreviewContainer.style.display = "none";
+      createStickerButton.style.display = "none";
+      isSticker = false;
+    }
+
+    // Enhanced send message with validation and loading
+    async function sendMessage() {
+      const text = messageInput.value.trim();
+      const file = fileInput.files[0];
+      
+      // Prevent empty messages
+      if (!text && !file) {
+        showCustomAlert("Empty Message", "Please enter a message or select a file to send.");
+        return;
+      }
+      
+      // Character limit validation
+      if (text.length > MAX_CHARS) {
+        showCustomAlert("Message Too Long", `Message exceeds ${MAX_CHARS} character limit.`);
+        return;
+      }
+      
+      sendButton.disabled = true;
+      
+      // Show upload progress
+      const progressDiv = document.createElement('div');
+      progressDiv.className = 'upload-progress';
+      progressDiv.innerHTML = '<div class="loading-spinner"></div> Sending message...';
+      document.getElementById('input-container').insertBefore(progressDiv, document.getElementById('input-container').firstChild);
+
+      try {
+        let fileBase64 = null;
+        let fileType = null;
+
+        if (file) {
+          fileBase64 = await new Promise((resolve) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result.split(",")[1]);
+            reader.readAsDataURL(file);
+          });
+          fileType = file.type;
+        }
+
+        const body = {
+          authToken,
+          text: text || "",
+          replyTo: replyingTo ? replyingTo.id : null,
+          fileBase64,
+          fileType,
+          issticker: isSticker
+        };
+
+        console.log("Sending message:", body);
+        const res = await fetch(`/message/${recipientId}`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body)
+        });
+
+        const data = await res.json();
+        if (res.ok) {
+          console.log("Message sent successfully:", data);
+          if (isSticker && data.data.fileUrl) {
+            saveSticker(data.data.fileUrl);
+          }
+          messageInput.value = "";
+          updateCharCounter();
+          clearMediaPreview();
+          replyingTo = null;
+          updateReplyPreview();
+        } else {
+          console.error("Error sending message:", data.error);
+          showCustomAlert("Error", data.error || "Failed to send message");
+        }
+      } catch (err) {
+        console.error("Error sending message:", err);
+        showCustomAlert("Error", "Error sending message");
+      } finally {
+        sendButton.disabled = false;
+        progressDiv.remove();
+      }
+    }
+
+    // Character counter update function
+    function updateCharCounter() {
+      const length = messageInput.value.length;
+      charCounter.textContent = `${length}/${MAX_CHARS}`;
+      
+      charCounter.className = 'char-counter';
+      if (length > MAX_CHARS * 0.9) {
+        charCounter.classList.add('warning');
+      }
+      if (length > MAX_CHARS) {
+        charCounter.classList.add('error');
+        sendButton.disabled = true;
+      } else {
+        sendButton.disabled = false;
+      }
+    }
+
+    sendButton.addEventListener("click", sendMessage);
+    messageInput.addEventListener("keypress", (e) => {
+      if (e.key === "Enter" && e.shiftKey) {
+        e.preventDefault();
+        sendMessage();
+      }
+    });
+
+    // Enhanced input handling with character counter
+    messageInput.addEventListener("input", () => {
+      messageInput.style.height = "auto";
+      messageInput.style.height = `${Math.min(messageInput.scrollHeight, 150)}px`;
+      
+      updateCharCounter();
+
+      socket.emit("typing", { room: `user_${recipientId}`, authToken });
+      clearTimeout(typingTimeout);
+      typingTimeout = setTimeout(() => {
+        socket.emit("stopTyping", { room: `user_${recipientId}`, authToken });
+      }, 5000);
+    });
+
+    // Reply preview
+    function updateReplyPreview() {
+      const replyPreview = document.getElementById("reply-input-preview");
+      if (replyingTo) {
+        replyPreview.style.display = "block";
+        replyPreview.innerHTML = `
+          Replying to ${escapeHtml(replyingTo.sender)}: ${escapeHtml(replyingTo.text.slice(0, 50))}...
+          <button onclick="cancelReply()">✕</button>
+        `;
+      } else {
+        replyPreview.style.display = "none";
+        replyPreview.innerHTML = "";
+      }
+    }
+
+    function cancelReply() {
+      replyingTo = null;
+      updateReplyPreview();
+    }
+
+    // HTML escape function
+    function escapeHtml(text) {
+      return text
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;");
+    }
+
+    // Initial load
+    fetchRecipient();
+    fetchUserData();
+    loadMessages();
+    loadStickers();
   </script>
 </body>
 </html>
