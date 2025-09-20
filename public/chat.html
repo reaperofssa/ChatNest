@@ -1458,6 +1458,18 @@
       updateReplyPreview();
     }
 
+    function toggleStickers() {
+  const isVisible = stickersContainer.style.display === "block";
+  stickersContainer.style.display = isVisible ? "none" : "block";
+  stickersToggle.classList.toggle("active", !isVisible);
+}
+
+function createSticker() {
+  isSticker = true;
+  createStickerButton.style.display = "none";
+  showCustomAlert("Sticker Mode", "This image will be sent as a sticker!");
+}
+    
     // HTML escape function
     function escapeHtml(text) {
       return text
