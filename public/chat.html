@@ -815,6 +815,7 @@
       }
     }
   </style>
+<script src="/socket.io/socket.io.js"></script>
 </head>
 <body>
   <!-- Background shapes for liquid glass effect -->
@@ -884,32 +885,60 @@
   </div>
 
   <script>
-    const socket = io();
-    let isLoading = false;
-    let earliestTimestamp = null;
-    let replyingTo = null;
-    let typingTimeout = null;
-    let recipientData = null;
-    let isSticker = false;
-    const MAX_CHARS = 1000;
+    document.addEventListener("DOMContentLoaded", () => {
+      if (typeof io === "undefined") {
+        console.error("Socket.IO not loaded");
+        showCustomAlert("Error", "Failed to load Socket.IO. Please try again later.");
+        return;
+      }
 
-    // Get recipientId and authToken
-    const params = window.location.pathname.split("/");
-    const recipientId = params[params.length - 1];
-    const authToken = localStorage.getItem("authToken");
+      const socket = io();
+      let isLoading = false;
+      let earliestTimestamp = null;
+      let replyingTo = null;
+      let typingTimeout = null;
+      let recipientData = null;
+      let isSticker = false;
+      const MAX_CHARS = 1000;
 
-    console.log("authToken:", authToken);
-    console.log("recipientId:", recipientId);
+      // Get DOM elements
+      const messageInput = document.getElementById("message-input");
+      const sendButton = document.getElementById("send-button");
+      const fileInput = document.getElementById("file-input");
+      const fileButton = document.getElementById("file-button");
+      const mediaPreview = document.getElementById("media-preview");
+      const mediaPreviewContainer = document.getElementById("media-preview-container");
+      const createStickerButton = document.getElementById("create-sticker-button");
+      const stickersContainer = document.getElementById("stickers-container");
+      const stickersToggle = document.getElementById("stickers-toggle");
+      const charCounter = document.getElementById("char-counter");
 
-    if (!authToken) {
-      showCustomAlert("Authentication Required", "No authToken found in localStorage. Please log in first.");
-      setTimeout(() => window.location.href = "/login", 2000);
-    }
+      // Check if DOM elements are found
+      if (!messageInput || !sendButton || !fileInput) {
+        console.error("DOM elements missing:", { messageInput, sendButton, fileInput });
+        showCustomAlert("Error", "Internal error: Required DOM elements not found.");
+        return;
+      }
 
-    if (!recipientId || isNaN(recipientId)) {
-      showCustomAlert("Invalid Recipient", "Invalid recipient ID in URL.");
-      setTimeout(() => window.location.href = "/chats.html", 2000);
-    }
+      // Get recipientId and authToken
+      const params = window.location.pathname.split("/");
+      const recipientId = params[params.length - 1];
+      const authToken = localStorage.getItem("authToken");
+
+      console.log("authToken:", authToken);
+      console.log("recipientId:", recipientId);
+
+      if (!authToken) {
+        showCustomAlert("Authentication Required", "No authToken found in localStorage. Please log in first.");
+        setTimeout(() => window.location.href = "/login", 2000);
+        return;
+      }
+
+      if (!recipientId || isNaN(recipientId)) {
+        showCustomAlert("Invalid Recipient", "Invalid recipient ID in URL.");
+        setTimeout(() => window.location.href = "/chats.html", 2000);
+        return;
+      }
 
     // Custom alert modal function
     function showCustomAlert(title, message) {
