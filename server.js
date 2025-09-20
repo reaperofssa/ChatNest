@@ -1573,6 +1573,67 @@ app.post("/subscribe/:channelId", async (req, res) => {
 
   return res.status(200).json({ message: "Subscribed successfully" });
 });
+
+app.post("/mychannels", async (req, res) => {
+  try {
+    const { authToken } = req.body;
+    if (!authToken) return res.status(400).json({ error: "authToken is required" });
+
+    // Validate user
+    const user = await User.findOne({ authToken });
+    if (!user) return res.status(401).json({ error: "Invalid authToken" });
+
+    // Find channels where user is owner, admin, or subscriber
+    const channels = await Channel.find({
+      $or: [
+        { ownerId: user.id },
+        { "admins.userId": user.id },
+        { "subscribers.userId": user.id }
+      ]
+    });
+
+    // Deduplicate by channel.id (in case user matches multiple conditions)
+    const uniqueChannels = new Map();
+    for (const ch of channels) {
+      uniqueChannels.set(ch.id, ch);
+    }
+
+    // For each channel, get latest message
+    const results = await Promise.all(
+      [...uniqueChannels.values()].map(async (ch) => {
+        const latestMsg = await ChannelMessage.findOne({ channelId: ch.id })
+          .sort({ timestamp: -1 })
+          .lean();
+
+        return {
+          id: ch.id,
+          name: ch.name,
+          latestMessage: latestMsg
+            ? {
+                text: latestMsg.text,
+                fileUrl: latestMsg.fileUrl,
+                senderId: latestMsg.senderId,
+                timestamp: latestMsg.timestamp,
+              }
+            : null,
+        };
+      })
+    );
+
+    // ✅ Sort channels by latestMessage timestamp (newest first)
+    results.sort((a, b) => {
+      const timeA = a.latestMessage?.timestamp ? new Date(a.latestMessage.timestamp) : 0;
+      const timeB = b.latestMessage?.timestamp ? new Date(b.latestMessage.timestamp) : 0;
+      return timeB - timeA;
+    });
+
+    return res.json({ channels: results });
+  } catch (err) {
+    console.error("Error fetching my channels:", err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 app.post("/react/:messageId", async (req, res) => {
   const { messageId } = req.params;
   const { authToken, emoji } = req.body;
