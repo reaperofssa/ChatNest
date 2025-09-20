@@ -152,21 +152,40 @@
       margin-top: 1px;
     }
 
+    #menu-button {
+      background: transparent;
+      border: none;
+      color: #ffffff;
+      font-size: 20px;
+      cursor: pointer;
+      padding: 8px;
+      border-radius: 50%;
+      transition: all 0.2s ease;
+      width: 40px;
+      height: 40px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    #menu-button:hover {
+      background: rgba(255, 255, 255, 0.1);
+    }
+
     .verified-badge {
       width: 16px;
       height: 16px;
       background: url('/verified.png') no-repeat center;
       background-size: contain;
+      display: inline-block;
     }
 
     .verified-icon {
-      color: #4A90E2;
-      font-size: 16px;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
       width: 16px;
       height: 16px;
+      background: url('/verified.png') no-repeat center;
+      background-size: contain;
+      display: inline-block;
     }
 
     #messages {
@@ -190,7 +209,7 @@
       display: none;
     }
 
-    /* Liquid glass message bubbles */
+    /* Performance optimizations */
     .message {
       margin-bottom: 12px;
       padding: 12px 16px;
@@ -199,14 +218,15 @@
       word-wrap: break-word;
       cursor: pointer;
       position: relative;
-      transition: all 0.3s cubic-bezier(0.4, 0.0, 0.2, 1);
+      transition: transform 0.2s ease;
       backdrop-filter: blur(15px);
       -webkit-backdrop-filter: blur(15px);
       border: 1px solid rgba(255, 255, 255, 0.05);
       overflow: hidden;
+      will-change: transform;
     }
 
-    /* Liquid deformation effect */
+    /* Simplified liquid deformation effect for better performance */
     .message::before {
       content: '';
       position: absolute;
@@ -214,10 +234,10 @@
       left: 0;
       right: 0;
       bottom: 0;
-      background: radial-gradient(circle at var(--mouse-x, 50%) var(--mouse-y, 50%), 
-                  rgba(255, 255, 255, 0.05) 0%, transparent 50%);
+      background: radial-gradient(circle at 50% 50%, 
+                  rgba(255, 255, 255, 0.03) 0%, transparent 50%);
       opacity: 0;
-      transition: opacity 0.3s ease;
+      transition: opacity 0.2s ease;
       pointer-events: none;
       border-radius: 20px;
     }
@@ -227,12 +247,12 @@
     }
 
     .message:hover {
-      transform: translateY(-1px) scale(1.002);
+      transform: translateY(-1px) scale(1.001);
       border-radius: 18px;
     }
 
     .message:active {
-      transform: translateY(1px) scale(0.998);
+      transform: translateY(1px) scale(0.999);
       border-radius: 22px;
     }
 
@@ -313,15 +333,42 @@
       border-radius: 6px;
     }
 
-    /* Enhanced input container */
+    /* Enhanced input container with viewport handling */
     #input-container {
-      padding: 12px 16px 20px 16px;
+      padding: 12px 16px;
+      padding-bottom: max(12px, env(safe-area-inset-bottom));
       background: rgba(26, 26, 26, 0.95);
       backdrop-filter: blur(10px);
       border-top: 1px solid rgba(255, 255, 255, 0.1);
       display: flex;
       flex-direction: column;
       gap: 12px;
+      position: relative;
+    }
+
+    /* iOS keyboard adjustment */
+    @media screen and (max-height: 500px) {
+      #input-container {
+        padding-bottom: 8px;
+      }
+      
+      #header {
+        transform: translateY(-100%);
+        transition: transform 0.3s ease;
+      }
+      
+      body.keyboard-open #header {
+        transform: translateY(0);
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        z-index: 100;
+      }
+      
+      body.keyboard-open #messages {
+        margin-top: 70px;
+      }
     }
 
     #message-input {
@@ -704,6 +751,7 @@
         <div id="user-username"></div>
         <div id="user-status">last seen recently</div>
       </div>
+      <button id="menu-button" onclick="window.location.href=`/info/${recipientId}`">⋯</button>
     </div>
     <div id="messages">
       <div id="no-messages">No messages yet. Start the conversation!</div>
@@ -836,7 +884,7 @@
           // Set name and verified badge
           nameEl.innerHTML = `
             ${escapeHtml(data.name || data.username)} 
-            ${data.verified ? '<img class="verified-badge" alt="Verified">' : ''}
+            ${data.verified ? '<span class="verified-badge"></span>' : ''}
           `;
 
           // Set username
@@ -898,6 +946,23 @@
               earliestTimestamp = data[0].timestamp;
               // Update activity from last message
               updateActivity();
+            } else if (before) {
+              // No more older messages - show indicator
+              const noOlderDiv = document.createElement('div');
+              noOlderDiv.className = 'no-older-messages';
+              noOlderDiv.style.cssText = `
+                text-align: center;
+                color: rgba(142, 142, 147, 0.6);
+                padding: 20px;
+                font-size: 14px;
+                background: rgba(44, 44, 46, 0.3);
+                border-radius: 12px;
+                margin: 10px;
+                backdrop-filter: blur(10px);
+              `;
+              noOlderDiv.textContent = 'No older messages';
+              document.getElementById('messages').insertBefore(noOlderDiv, document.getElementById('messages').firstChild);
+              earliestTimestamp = null; // Prevent further loading attempts
             }
           }
         } else {
@@ -963,7 +1028,7 @@
         content += `
           <div class="username">
             ${escapeHtml(msg.senderName || msg.senderUsername || "Unknown")}
-            ${msg.senderVerified ? '<span class="verified-icon">✓</span>' : ''}
+            ${msg.senderVerified ? '<span class="verified-icon"></span>' : ''}
           </div>
         `;
 
@@ -987,8 +1052,15 @@
               <div class="reply-preview">
                 ${mediaPreview}
                 ${escapeHtml(replyData.senderName || replyData.senderUsername || "Unknown")}
-                ${replyData.senderVerified ? '<span class="verified-icon">✓</span>' : ''}: 
+                ${replyData.senderVerified ? '<span class="verified-icon"></span>' : ''}: 
                 ${escapeHtml(replyText.slice(0, 50))}${replyText.length > 50 ? "..." : ""}
+              </div>
+            `;
+          } else {
+            // Fallback when message metadata cannot be fetched
+            content += `
+              <div class="reply-preview">
+                <span>[Deleted message]</span>
               </div>
             `;
           }
@@ -1024,9 +1096,6 @@
           updateReplyPreview();
         });
 
-        // Add liquid effect
-        addLiquidEffect(div);
-
         if (append) {
           container.appendChild(div);
         } else {
@@ -1048,14 +1117,14 @@
             let replyContent = `
               <div class="username">
                 ${escapeHtml(reply.senderName || reply.senderUsername || "Unknown")}
-                ${reply.senderVerified ? '<span class="verified-icon">✓</span>' : ''}
+                ${reply.senderVerified ? '<span class="verified-icon"></span>' : ''}
               </div>
             `;
 
             if (reply.replyTo) {
               replyContent += `
                 <div class="reply-preview">
-                  Reply to message ID ${reply.replyTo}
+                  <span>[Reply to message]</span>
                 </div>
               `;
             }
@@ -1089,9 +1158,6 @@
               replyingTo = { id: reply.id, text: reply.text || "[Media]", sender: reply.senderName || reply.senderUsername || "Unknown" };
               updateReplyPreview();
             });
-
-            // Add liquid effect to replies too
-            addLiquidEffect(replyDiv);
 
             if (append) {
               container.appendChild(replyDiv);
@@ -1135,6 +1201,34 @@
       } else {
         typingIndicator.textContent = "";
       }
+    });
+
+    // iOS keyboard handling
+    let initialViewportHeight = window.innerHeight;
+    
+    function handleViewportChange() {
+      const currentHeight = window.innerHeight;
+      const diff = initialViewportHeight - currentHeight;
+      
+      if (diff > 150) { // Keyboard is likely open
+        document.body.classList.add('keyboard-open');
+        // Scroll to bottom when keyboard opens
+        const messages = document.getElementById('messages');
+        setTimeout(() => {
+          messages.scrollTop = messages.scrollHeight;
+        }, 100);
+      } else {
+        document.body.classList.remove('keyboard-open');
+      }
+    }
+
+    // Listen for viewport changes
+    window.addEventListener('resize', handleViewportChange);
+    window.addEventListener('orientationchange', () => {
+      setTimeout(() => {
+        initialViewportHeight = window.innerHeight;
+        handleViewportChange();
+      }, 500);
     });
 
     // Load stickers from localStorage
