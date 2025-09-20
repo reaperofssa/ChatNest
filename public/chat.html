@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Chat</title>
   <style>
     * {
@@ -12,14 +13,14 @@
 
     body {
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-      background: linear-gradient(135deg, #0a0a0a 0%, #1a1a1a 50%, #0f2027 100%);
+      background: linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 30%, #16213e 60%, #0f3460 100%);
       height: 100vh;
       overflow: hidden;
       color: white;
       position: relative;
     }
 
-    /* <CHANGE> Animated background shapes like Telegram */
+    /* Enhanced animated background with liquid glass environment */
     .background-shapes {
       position: fixed;
       top: 0;
@@ -28,60 +29,82 @@
       height: 100%;
       pointer-events: none;
       z-index: 0;
+      overflow: hidden;
     }
 
     .shape {
       position: absolute;
       border-radius: 50%;
-      opacity: 0.1;
-      animation: float 20s infinite linear;
+      opacity: 0.15;
+      animation: liquidFloat 25s infinite ease-in-out;
+      filter: blur(1px);
     }
 
     .shape:nth-child(1) {
-      width: 200px;
-      height: 200px;
-      background: radial-gradient(circle, #14b8a6, transparent);
-      top: 10%;
-      left: 10%;
+      width: 300px;
+      height: 300px;
+      background: radial-gradient(circle, rgba(20, 184, 166, 0.4), rgba(8, 145, 178, 0.2), transparent);
+      top: -10%;
+      left: -10%;
       animation-delay: 0s;
     }
 
     .shape:nth-child(2) {
-      width: 150px;
-      height: 150px;
-      background: radial-gradient(circle, #0891b2, transparent);
-      top: 60%;
-      right: 20%;
-      animation-delay: -5s;
+      width: 250px;
+      height: 250px;
+      background: radial-gradient(circle, rgba(8, 145, 178, 0.3), rgba(6, 182, 212, 0.2), transparent);
+      top: 40%;
+      right: -15%;
+      animation-delay: -8s;
     }
 
     .shape:nth-child(3) {
-      width: 100px;
-      height: 100px;
-      background: radial-gradient(circle, #06b6d4, transparent);
-      bottom: 20%;
-      left: 30%;
-      animation-delay: -10s;
+      width: 200px;
+      height: 200px;
+      background: radial-gradient(circle, rgba(6, 182, 212, 0.4), rgba(13, 148, 136, 0.2), transparent);
+      bottom: -10%;
+      left: 20%;
+      animation-delay: -16s;
     }
 
     .shape:nth-child(4) {
-      width: 120px;
-      height: 120px;
-      background: radial-gradient(circle, #0d9488, transparent);
-      top: 30%;
-      right: 40%;
-      animation-delay: -15s;
+      width: 180px;
+      height: 180px;
+      background: radial-gradient(circle, rgba(13, 148, 136, 0.3), rgba(20, 184, 166, 0.2), transparent);
+      top: 20%;
+      right: 30%;
+      animation-delay: -12s;
     }
 
-    @keyframes float {
-      0% { transform: translateY(0px) rotate(0deg); }
-      25% { transform: translateY(-20px) rotate(90deg); }
-      50% { transform: translateY(0px) rotate(180deg); }
-      75% { transform: translateY(20px) rotate(270deg); }
-      100% { transform: translateY(0px) rotate(360deg); }
+    .shape:nth-child(5) {
+      width: 160px;
+      height: 160px;
+      background: radial-gradient(circle, rgba(34, 197, 94, 0.3), rgba(20, 184, 166, 0.2), transparent);
+      bottom: 30%;
+      right: 10%;
+      animation-delay: -20s;
     }
 
-    /* <CHANGE> Full viewport chat container */
+    @keyframes liquidFloat {
+      0%, 100% { 
+        transform: translateY(0px) translateX(0px) rotate(0deg) scale(1);
+        border-radius: 50%;
+      }
+      25% { 
+        transform: translateY(-30px) translateX(20px) rotate(90deg) scale(1.1);
+        border-radius: 60% 40% 30% 70%;
+      }
+      50% { 
+        transform: translateY(-15px) translateX(-25px) rotate(180deg) scale(0.9);
+        border-radius: 30% 60% 70% 40%;
+      }
+      75% { 
+        transform: translateY(20px) translateX(15px) rotate(270deg) scale(1.05);
+        border-radius: 40% 30% 60% 50%;
+      }
+    }
+
+    /* Mobile-first design */
     #chat-container {
       width: 100vw;
       height: 100vh;
@@ -91,56 +114,113 @@
       z-index: 1;
     }
 
-    /* <CHANGE> Glass morphism header */
+    /* Enhanced header with user info */
     #header {
-      background: rgba(0, 0, 0, 0.3);
-      backdrop-filter: blur(20px);
-      -webkit-backdrop-filter: blur(20px);
-      border-bottom: 1px solid rgba(20, 184, 166, 0.2);
+      background: rgba(0, 0, 0, 0.4);
+      backdrop-filter: blur(30px);
+      -webkit-backdrop-filter: blur(30px);
+      border-bottom: 1px solid rgba(20, 184, 166, 0.3);
       padding: 20px 24px;
       display: flex;
       align-items: center;
       gap: 16px;
-      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+      min-height: 80px;
     }
 
     #header button {
       background: rgba(20, 184, 166, 0.2);
-      border: 1px solid rgba(20, 184, 166, 0.3);
+      border: 1px solid rgba(20, 184, 166, 0.4);
       color: #14b8a6;
-      font-size: 18px;
+      font-size: 20px;
       cursor: pointer;
-      padding: 12px 16px;
-      border-radius: 12px;
+      padding: 14px 18px;
+      border-radius: 16px;
       backdrop-filter: blur(10px);
       transition: all 0.3s ease;
+      min-width: 50px;
+      min-height: 50px;
     }
 
     #header button:hover {
       background: rgba(20, 184, 166, 0.3);
       transform: translateY(-2px);
+      box-shadow: 0 4px 20px rgba(20, 184, 166, 0.3);
     }
 
-    #recipient-name {
+    .user-info {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex: 1;
+    }
+
+    .user-avatar {
+      width: 50px;
+      height: 50px;
+      border-radius: 50%;
+      border: 2px solid rgba(20, 184, 166, 0.4);
+      background: rgba(20, 184, 166, 0.1);
+      overflow: hidden;
+      position: relative;
+    }
+
+    .user-avatar img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .user-details {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .user-name {
       color: #ffffff;
-      font-size: 20px;
+      font-size: 18px;
       font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 6px;
     }
 
-    /* <CHANGE> Glass morphism messages container */
+    .user-username {
+      color: rgba(255, 255, 255, 0.7);
+      font-size: 14px;
+      font-weight: 400;
+    }
+
+    .user-status {
+      color: rgba(34, 197, 94, 0.8);
+      font-size: 12px;
+      font-weight: 500;
+    }
+
+    .verified-badge {
+      width: 18px;
+      height: 18px;
+      background-image: url('/verified.png');
+      background-size: contain;
+      background-repeat: no-repeat;
+      background-position: center;
+    }
+
+    /* Enhanced messages container */
     #messages {
       flex: 1;
-      padding: 24px;
+      padding: 20px;
       overflow-y: auto;
       background: rgba(0, 0, 0, 0.1);
-      backdrop-filter: blur(15px);
-      -webkit-backdrop-filter: blur(15px);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
       scrollbar-width: thin;
-      scrollbar-color: rgba(20, 184, 166, 0.3) transparent;
+      scrollbar-color: rgba(20, 184, 166, 0.4) transparent;
     }
 
     #messages::-webkit-scrollbar {
-      width: 6px;
+      width: 8px;
     }
 
     #messages::-webkit-scrollbar-track {
@@ -148,34 +228,37 @@
     }
 
     #messages::-webkit-scrollbar-thumb {
-      background: rgba(20, 184, 166, 0.3);
-      border-radius: 3px;
+      background: rgba(20, 184, 166, 0.4);
+      border-radius: 4px;
     }
 
     #no-messages {
       text-align: center;
       color: rgba(255, 255, 255, 0.6);
-      padding: 40px;
-      font-size: 18px;
+      padding: 60px 20px;
+      font-size: 16px;
       display: none;
     }
 
-    /* <CHANGE> Enhanced message bubbles with liquid glass effect */
+    /* iOS Liquid Glass Effect for messages */
     .message {
-      margin-bottom: 16px;
-      padding: 16px 20px;
-      border-radius: 20px;
-      max-width: 75%;
+      margin-bottom: 20px;
+      padding: 18px 22px;
+      border-radius: 24px;
+      max-width: 85%;
       word-wrap: break-word;
       cursor: pointer;
-      backdrop-filter: blur(20px);
-      -webkit-backdrop-filter: blur(20px);
-      border: 1px solid rgba(255, 255, 255, 0.1);
-      transition: all 0.3s ease;
+      backdrop-filter: blur(25px);
+      -webkit-backdrop-filter: blur(25px);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      transition: all 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
       position: relative;
       overflow: hidden;
+      font-size: 16px;
+      line-height: 1.4;
     }
 
+    /* Liquid glass morphing effect */
     .message::before {
       content: '';
       position: absolute;
@@ -183,44 +266,58 @@
       left: 0;
       right: 0;
       bottom: 0;
-      background: linear-gradient(45deg, rgba(20, 184, 166, 0.1), rgba(8, 145, 178, 0.1));
+      background: linear-gradient(135deg, 
+        rgba(20, 184, 166, 0.08), 
+        rgba(8, 145, 178, 0.06), 
+        rgba(6, 182, 212, 0.08));
       opacity: 0;
-      transition: opacity 0.3s ease;
+      transition: all 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
       pointer-events: none;
+      border-radius: 24px;
     }
 
     .message:hover::before {
       opacity: 1;
+      transform: scale(1.02);
     }
 
     .message:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 8px 32px rgba(20, 184, 166, 0.2);
+      transform: translateY(-3px) scale(1.01);
+      box-shadow: 
+        0 12px 40px rgba(20, 184, 166, 0.15),
+        0 0 0 1px rgba(20, 184, 166, 0.2),
+        inset 0 1px 0 rgba(255, 255, 255, 0.1);
+      border-color: rgba(20, 184, 166, 0.3);
     }
 
     .sent {
-      background: rgba(20, 184, 166, 0.15);
+      background: rgba(20, 184, 166, 0.12);
       align-self: flex-end;
       margin-left: auto;
-      border: 1px solid rgba(20, 184, 166, 0.3);
+      border: 1px solid rgba(20, 184, 166, 0.25);
+      box-shadow: 
+        0 8px 32px rgba(20, 184, 166, 0.1),
+        inset 0 1px 0 rgba(255, 255, 255, 0.1);
     }
 
     .received {
-      background: rgba(255, 255, 255, 0.05);
+      background: rgba(255, 255, 255, 0.08);
       align-self: flex-start;
-      border: 1px solid rgba(255, 255, 255, 0.1);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      box-shadow: 
+        0 8px 32px rgba(0, 0, 0, 0.1),
+        inset 0 1px 0 rgba(255, 255, 255, 0.08);
     }
 
-    /* <CHANGE> Enhanced verified user styling */
+    /* Enhanced verified message styling */
     .verified-message {
-      border: 2px solid rgba(20, 184, 166, 0.5) !important;
-      background: rgba(20, 184, 166, 0.1) !important;
-      box-shadow: 0 0 20px rgba(20, 184, 166, 0.3);
+      border: 2px solid rgba(20, 184, 166, 0.6) !important;
+      background: rgba(20, 184, 166, 0.15) !important;
+      box-shadow: 
+        0 0 30px rgba(20, 184, 166, 0.25),
+        0 8px 32px rgba(20, 184, 166, 0.15),
+        inset 0 1px 0 rgba(255, 255, 255, 0.15) !important;
     }
-
-    .message-text {
-  color: black;
-}
 
     .verified-message::after {
       content: '';
@@ -229,92 +326,92 @@
       left: -2px;
       right: -2px;
       bottom: -2px;
-      background: linear-gradient(45deg, #14b8a6, #0891b2, #06b6d4);
-      border-radius: 22px;
+      background: linear-gradient(135deg, 
+        rgba(20, 184, 166, 0.3), 
+        rgba(8, 145, 178, 0.2), 
+        rgba(6, 182, 212, 0.3));
+      border-radius: 26px;
       z-index: -1;
-      opacity: 0.3;
+      opacity: 0.4;
+      filter: blur(1px);
+    }
+
+    .message-text {
+      color: rgba(255, 255, 255, 0.95);
+      white-space: pre-wrap;
+      margin-top: 8px;
+      line-height: 1.5;
     }
 
     .meta {
       font-size: 12px;
       color: rgba(255, 255, 255, 0.6);
-      margin-top: 8px;
+      margin-top: 12px;
     }
 
     .username {
-      font-size: 14px;
+      font-size: 15px;
       font-weight: 600;
       margin-bottom: 8px;
       color: #ffffff;
       display: flex;
       align-items: center;
-      gap: 6px;
+      gap: 8px;
     }
 
-    /* <CHANGE> Verified icon instead of text */
     .verified-icon {
-      color: #14b8a6;
-      font-size: 16px;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      width: 20px;
-      height: 20px;
-      background: rgba(20, 184, 166, 0.2);
-      border-radius: 50%;
-      border: 1px solid rgba(20, 184, 166, 0.5);
+      width: 16px;
+      height: 16px;
+      background-image: url('/verified.png');
+      background-size: contain;
+      background-repeat: no-repeat;
+      background-position: center;
+      display: inline-block;
     }
 
     img, video {
       max-width: 100%;
-      border-radius: 12px;
-      margin-top: 8px;
+      border-radius: 16px;
+      margin-top: 12px;
     }
 
     .sticker {
-      max-width: 120px;
-      max-height: 120px;
+      max-width: 140px;
+      max-height: 140px;
     }
 
     audio {
       width: 100%;
-      margin-top: 8px;
-      border-radius: 8px;
-    }
-
-    .message-text {
-      white-space: pre-wrap;
-      margin-top: 8px;
-      color: #ffffff;
-      line-height: 1.5;
+      margin-top: 12px;
+      border-radius: 12px;
     }
 
     .reply-preview {
-      background: rgba(0, 0, 0, 0.3);
-      padding: 12px 16px;
-      border-radius: 12px;
+      background: rgba(0, 0, 0, 0.4);
+      padding: 14px 18px;
+      border-radius: 16px;
       font-size: 14px;
-      margin-bottom: 8px;
-      border-left: 3px solid #14b8a6;
+      margin-bottom: 12px;
+      border-left: 4px solid #14b8a6;
       display: flex;
       align-items: center;
-      gap: 8px;
-      backdrop-filter: blur(10px);
+      gap: 10px;
+      backdrop-filter: blur(15px);
     }
 
     .reply-preview img, .reply-preview video {
-      max-width: 40px;
-      max-height: 40px;
-      border-radius: 8px;
+      max-width: 45px;
+      max-height: 45px;
+      border-radius: 12px;
     }
 
-    /* <CHANGE> Enhanced input container */
+    /* Enhanced input container for mobile */
     #input-container {
-      padding: 24px;
-      background: rgba(0, 0, 0, 0.3);
-      backdrop-filter: blur(20px);
-      -webkit-backdrop-filter: blur(20px);
-      border-top: 1px solid rgba(20, 184, 166, 0.2);
+      padding: 20px;
+      background: rgba(0, 0, 0, 0.4);
+      backdrop-filter: blur(30px);
+      -webkit-backdrop-filter: blur(30px);
+      border-top: 1px solid rgba(20, 184, 166, 0.3);
       display: flex;
       flex-direction: column;
       gap: 16px;
@@ -322,36 +419,38 @@
 
     #message-input {
       flex: 1;
-      padding: 16px 20px;
-      background: rgba(255, 255, 255, 0.05);
-      border: 1px solid rgba(255, 255, 255, 0.1);
-      border-radius: 16px;
+      padding: 18px 22px;
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      border-radius: 20px;
       resize: none;
-      min-height: 50px;
+      min-height: 55px;
       max-height: 150px;
       overflow-y: auto;
       color: #ffffff;
       font-size: 16px;
-      backdrop-filter: blur(10px);
+      backdrop-filter: blur(15px);
       transition: all 0.3s ease;
     }
 
     #message-input:focus {
       outline: none;
-      border-color: rgba(20, 184, 166, 0.5);
-      box-shadow: 0 0 20px rgba(20, 184, 166, 0.2);
+      border-color: rgba(20, 184, 166, 0.6);
+      box-shadow: 
+        0 0 0 3px rgba(20, 184, 166, 0.1),
+        0 0 25px rgba(20, 184, 166, 0.2);
+      background: rgba(255, 255, 255, 0.1);
     }
 
     #message-input::placeholder {
       color: rgba(255, 255, 255, 0.5);
     }
 
-    /* <CHANGE> Character counter */
     .char-counter {
       font-size: 12px;
       color: rgba(255, 255, 255, 0.6);
       text-align: right;
-      margin-top: 4px;
+      margin-top: 6px;
     }
 
     .char-counter.warning {
@@ -363,21 +462,22 @@
     }
 
     #send-button {
-      padding: 16px 24px;
+      padding: 18px 28px;
       background: linear-gradient(135deg, #14b8a6, #0891b2);
       color: white;
       border: none;
-      border-radius: 16px;
+      border-radius: 20px;
       cursor: pointer;
       font-size: 16px;
       font-weight: 600;
       transition: all 0.3s ease;
-      min-width: 100px;
+      min-width: 120px;
+      min-height: 55px;
     }
 
     #send-button:hover:not(:disabled) {
       transform: translateY(-2px);
-      box-shadow: 0 8px 25px rgba(20, 184, 166, 0.4);
+      box-shadow: 0 12px 30px rgba(20, 184, 166, 0.4);
     }
 
     #send-button:disabled {
@@ -392,28 +492,34 @@
     }
 
     #file-button {
-      padding: 16px 20px;
+      padding: 18px 22px;
       background: rgba(20, 184, 166, 0.2);
       color: #14b8a6;
-      border: 1px solid rgba(20, 184, 166, 0.3);
-      border-radius: 16px;
+      border: 1px solid rgba(20, 184, 166, 0.4);
+      border-radius: 20px;
       cursor: pointer;
-      font-size: 20px;
+      font-size: 22px;
       transition: all 0.3s ease;
-      backdrop-filter: blur(10px);
+      backdrop-filter: blur(15px);
+      min-width: 55px;
+      min-height: 55px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
     }
 
     #file-button:hover {
       background: rgba(20, 184, 166, 0.3);
       transform: translateY(-2px);
+      box-shadow: 0 8px 25px rgba(20, 184, 166, 0.3);
     }
 
     #create-sticker-button {
-      padding: 12px 16px;
+      padding: 14px 20px;
       background: linear-gradient(135deg, #f59e0b, #d97706);
       color: white;
       border: none;
-      border-radius: 12px;
+      border-radius: 16px;
       cursor: pointer;
       font-size: 14px;
       transition: all 0.3s ease;
@@ -421,34 +527,34 @@
 
     #create-sticker-button:hover {
       transform: translateY(-2px);
-      box-shadow: 0 4px 15px rgba(245, 158, 11, 0.4);
+      box-shadow: 0 6px 20px rgba(245, 158, 11, 0.4);
     }
 
     #media-preview {
-      max-width: 120px;
-      max-height: 120px;
-      border-radius: 12px;
+      max-width: 140px;
+      max-height: 140px;
+      border-radius: 16px;
     }
 
     #media-preview-container {
       display: none;
-      padding: 16px;
-      background: rgba(0, 0, 0, 0.3);
-      border-radius: 16px;
+      padding: 18px;
+      background: rgba(0, 0, 0, 0.4);
+      border-radius: 20px;
       display: flex;
       align-items: center;
-      gap: 12px;
-      backdrop-filter: blur(10px);
-      border: 1px solid rgba(255, 255, 255, 0.1);
+      gap: 14px;
+      backdrop-filter: blur(15px);
+      border: 1px solid rgba(255, 255, 255, 0.15);
     }
 
     #media-preview-container button {
       background: rgba(239, 68, 68, 0.2);
-      border: 1px solid rgba(239, 68, 68, 0.3);
+      border: 1px solid rgba(239, 68, 68, 0.4);
       color: #ef4444;
       cursor: pointer;
-      padding: 8px 12px;
-      border-radius: 8px;
+      padding: 12px 16px;
+      border-radius: 12px;
       transition: all 0.3s ease;
     }
 
@@ -458,22 +564,22 @@
 
     #typing-indicator {
       font-size: 14px;
-      color: rgba(255, 255, 255, 0.6);
-      padding: 8px 24px;
-      background: rgba(0, 0, 0, 0.2);
-      backdrop-filter: blur(10px);
+      color: rgba(255, 255, 255, 0.7);
+      padding: 12px 24px;
+      background: rgba(0, 0, 0, 0.3);
+      backdrop-filter: blur(15px);
     }
 
     #reply-input-preview {
-      background: rgba(0, 0, 0, 0.3);
-      padding: 12px 16px;
-      border-radius: 12px;
+      background: rgba(0, 0, 0, 0.4);
+      padding: 14px 18px;
+      border-radius: 16px;
       font-size: 14px;
       display: flex;
       justify-content: space-between;
       align-items: center;
-      backdrop-filter: blur(10px);
-      border: 1px solid rgba(20, 184, 166, 0.3);
+      backdrop-filter: blur(15px);
+      border: 1px solid rgba(20, 184, 166, 0.4);
       color: #ffffff;
     }
 
@@ -482,9 +588,9 @@
       border: none;
       color: #ef4444;
       cursor: pointer;
-      font-size: 16px;
-      padding: 4px 8px;
-      border-radius: 4px;
+      font-size: 18px;
+      padding: 6px 10px;
+      border-radius: 6px;
       transition: all 0.3s ease;
     }
 
@@ -496,45 +602,45 @@
       display: none;
       position: absolute;
       background: rgba(0, 0, 0, 0.8);
-      border: 1px solid rgba(20, 184, 166, 0.3);
-      border-radius: 16px;
-      padding: 16px;
-      max-height: 120px;
+      border: 1px solid rgba(20, 184, 166, 0.4);
+      border-radius: 20px;
+      padding: 18px;
+      max-height: 140px;
       overflow-x: auto;
       white-space: nowrap;
       z-index: 100;
-      width: 350px;
-      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
-      backdrop-filter: blur(20px);
+      width: 380px;
+      box-shadow: 0 12px 40px rgba(0, 0, 0, 0.6);
+      backdrop-filter: blur(25px);
       bottom: 100%;
-      margin-bottom: 8px;
+      margin-bottom: 12px;
     }
 
     #stickers-container img {
-      max-width: 60px;
-      max-height: 60px;
-      margin-right: 8px;
+      max-width: 70px;
+      max-height: 70px;
+      margin-right: 12px;
       cursor: pointer;
       display: inline-block;
-      border-radius: 8px;
+      border-radius: 12px;
       transition: all 0.3s ease;
     }
 
     #stickers-container img:hover {
-      transform: scale(1.1);
-      box-shadow: 0 4px 15px rgba(20, 184, 166, 0.3);
+      transform: scale(1.15);
+      box-shadow: 0 6px 20px rgba(20, 184, 166, 0.4);
     }
 
     #stickers-toggle {
-      padding: 12px 16px;
+      padding: 14px 20px;
       background: rgba(108, 117, 125, 0.2);
       color: #ffffff;
-      border: 1px solid rgba(108, 117, 125, 0.3);
-      border-radius: 12px;
+      border: 1px solid rgba(108, 117, 125, 0.4);
+      border-radius: 16px;
       cursor: pointer;
       font-size: 14px;
       position: relative;
-      backdrop-filter: blur(10px);
+      backdrop-filter: blur(15px);
       transition: all 0.3s ease;
     }
 
@@ -545,7 +651,7 @@
 
     #stickers-toggle::after {
       content: '▼';
-      margin-left: 8px;
+      margin-left: 10px;
       font-size: 12px;
       transition: transform 0.3s ease;
     }
@@ -554,11 +660,11 @@
       transform: rotate(180deg);
     }
 
-    /* <CHANGE> Loading indicators */
+    /* Loading indicators */
     .loading-spinner {
       display: inline-block;
-      width: 20px;
-      height: 20px;
+      width: 22px;
+      height: 22px;
       border: 2px solid rgba(20, 184, 166, 0.3);
       border-radius: 50%;
       border-top-color: #14b8a6;
@@ -571,17 +677,17 @@
 
     .upload-progress {
       background: rgba(20, 184, 166, 0.2);
-      padding: 12px 16px;
-      border-radius: 12px;
-      margin-bottom: 8px;
+      padding: 14px 18px;
+      border-radius: 16px;
+      margin-bottom: 12px;
       display: flex;
       align-items: center;
-      gap: 12px;
-      backdrop-filter: blur(10px);
-      border: 1px solid rgba(20, 184, 166, 0.3);
+      gap: 14px;
+      backdrop-filter: blur(15px);
+      border: 1px solid rgba(20, 184, 166, 0.4);
     }
 
-    /* <CHANGE> Custom modal styles */
+    /* Custom modal styles */
     .modal-overlay {
       position: fixed;
       top: 0;
@@ -589,7 +695,7 @@
       width: 100%;
       height: 100%;
       background: rgba(0, 0, 0, 0.8);
-      backdrop-filter: blur(10px);
+      backdrop-filter: blur(15px);
       display: flex;
       align-items: center;
       justify-content: center;
@@ -598,25 +704,25 @@
 
     .modal {
       background: rgba(0, 0, 0, 0.9);
-      backdrop-filter: blur(20px);
-      border: 1px solid rgba(20, 184, 166, 0.3);
-      border-radius: 20px;
-      padding: 32px;
-      max-width: 400px;
+      backdrop-filter: blur(30px);
+      border: 1px solid rgba(20, 184, 166, 0.4);
+      border-radius: 24px;
+      padding: 36px;
+      max-width: 420px;
       width: 90%;
       text-align: center;
-      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+      box-shadow: 0 25px 70px rgba(0, 0, 0, 0.6);
     }
 
     .modal h3 {
       color: #ffffff;
-      margin-bottom: 16px;
-      font-size: 20px;
+      margin-bottom: 18px;
+      font-size: 22px;
     }
 
     .modal p {
       color: rgba(255, 255, 255, 0.8);
-      margin-bottom: 24px;
+      margin-bottom: 28px;
       line-height: 1.5;
     }
 
@@ -624,8 +730,8 @@
       background: linear-gradient(135deg, #14b8a6, #0891b2);
       color: white;
       border: none;
-      padding: 12px 24px;
-      border-radius: 12px;
+      padding: 14px 28px;
+      border-radius: 16px;
       cursor: pointer;
       font-size: 16px;
       font-weight: 600;
@@ -634,13 +740,14 @@
 
     .modal button:hover {
       transform: translateY(-2px);
-      box-shadow: 0 8px 25px rgba(20, 184, 166, 0.4);
+      box-shadow: 0 10px 30px rgba(20, 184, 166, 0.4);
     }
 
-    /* <CHANGE> Responsive design */
+    /* Mobile optimizations */
     @media (max-width: 768px) {
       #header {
-        padding: 16px 20px;
+        padding: 16px 18px;
+        min-height: 75px;
       }
       
       #messages {
@@ -652,15 +759,70 @@
       }
       
       .message {
-        max-width: 85%;
-        padding: 12px 16px;
+        max-width: 90%;
+        padding: 16px 20px;
+        font-size: 15px;
+      }
+
+      .user-avatar {
+        width: 45px;
+        height: 45px;
+      }
+
+      .user-name {
+        font-size: 17px;
+      }
+
+      .user-username {
+        font-size: 13px;
+      }
+
+      #message-input {
+        font-size: 16px; /* Prevent zoom on iOS */
+      }
+
+      #send-button, #file-button {
+        min-height: 50px;
+      }
+
+      #stickers-container {
+        width: 350px;
+      }
+    }
+
+    @media (max-width: 480px) {
+      .message {
+        max-width: 95%;
+        padding: 14px 18px;
+      }
+      
+      #header {
+        padding: 14px 16px;
+      }
+
+      .user-info {
+        gap: 10px;
+      }
+
+      .user-avatar {
+        width: 42px;
+        height: 42px;
+      }
+
+      .user-name {
+        font-size: 16px;
+      }
+
+      #stickers-container {
+        width: 320px;
       }
     }
   </style>
 </head>
 <body>
-  <!-- <CHANGE> Background shapes for liquid glass effect -->
+  <!-- Enhanced background shapes for liquid glass environment -->
   <div class="background-shapes">
+    <div class="shape"></div>
     <div class="shape"></div>
     <div class="shape"></div>
     <div class="shape"></div>
@@ -670,7 +832,19 @@
   <div id="chat-container">
     <div id="header">
       <button onclick="window.location.href='/chats.html'">←</button>
-      <span id="recipient-name"></span>
+      <div class="user-info">
+        <div class="user-avatar">
+          <img id="user-avatar-img" src="" alt="User Avatar" style="display: none;">
+        </div>
+        <div class="user-details">
+          <div class="user-name" id="user-name">
+            <span id="user-display-name"></span>
+            <div class="verified-badge" id="verified-badge" style="display: none;"></div>
+          </div>
+          <div class="user-username" id="user-username"></div>
+          <div class="user-status" id="user-status">online</div>
+        </div>
+      </div>
     </div>
     <div id="messages">
       <div id="no-messages">No messages yet. Start the conversation!</div>
@@ -679,7 +853,7 @@
     <div id="input-container">
       <div id="reply-input-preview" style="display: none;"></div>
       <div id="stickers-container"></div>
-      <div style="display: flex; gap: 12px; align-items: center;">
+      <div style="display: flex; gap: 14px; align-items: center;">
         <button id="stickers-toggle">My Stickers</button>
         <div style="flex: 1;"></div>
       </div>
@@ -688,10 +862,9 @@
         <button onclick="clearMediaPreview()">✕</button>
         <button id="create-sticker-button">Create Sticker</button>
       </div>
-      <div style="display: flex; gap: 12px; align-items: flex-end;">
+      <div style="display: flex; gap: 14px; align-items: flex-end;">
         <div style="flex: 1;">
           <textarea id="message-input" placeholder="Type a message..." rows="1"></textarea>
-          <!-- <CHANGE> Character counter -->
           <div class="char-counter" id="char-counter">0/1000</div>
         </div>
         <button id="send-button">Send</button>
@@ -710,7 +883,7 @@
     let typingTimeout = null;
     let recipientData = null;
     let isSticker = false;
-    const MAX_CHARS = 1000; // <CHANGE> Character limit
+    const MAX_CHARS = 1000;
 
     // Get recipientId and authToken
     const params = window.location.pathname.split("/");
@@ -730,7 +903,7 @@
       setTimeout(() => window.location.href = "/chats.html", 2000);
     }
 
-    // <CHANGE> Custom alert modal function
+    // Custom alert modal function
     function showCustomAlert(title, message) {
       const overlay = document.createElement('div');
       overlay.className = 'modal-overlay';
@@ -744,36 +917,90 @@
       document.body.appendChild(overlay);
     }
 
-    // Fetch recipient details
+    // Enhanced recipient fetch with complete user info display
     async function fetchRecipient() {
       try {
         const res = await fetch(`/user/id/${recipientId}`);
         const data = await res.json();
         if (res.ok) {
           recipientData = data;
-          document.getElementById("recipient-name").innerHTML = `
-            ${escapeHtml(data.name || data.username)} 
-            ${data.verified ? '<span class="verified-icon">✓</span>' : ''}
-          `;
+          
+          // Update user avatar
+          const avatarImg = document.getElementById("user-avatar-img");
+          if (data.profileimg && data.profileimg !== "https://example.com/default-profile.png") {
+            avatarImg.src = data.profileimg;
+            avatarImg.style.display = "block";
+            avatarImg.onerror = function() {
+              this.style.display = "none";
+            };
+          }
+          
+          // Update user name
+          document.getElementById("user-display-name").textContent = data.name || data.username || "Unknown User";
+          
+          // Update username
+          document.getElementById("user-username").textContent = data.username ? `@${data.username}` : "";
+          
+          // Update verification badge
+          const verifiedBadge = document.getElementById("verified-badge");
+          if (data.verified) {
+            verifiedBadge.style.display = "block";
+          }
+          
+          // Update online status (simulate based on last activity)
+          updateUserStatus(data.logdate);
+          
+          console.log("Recipient data loaded:", data);
         } else {
           console.error("Error fetching recipient:", data.error);
-          document.getElementById("recipient-name").textContent = "Unknown User";
+          document.getElementById("user-display-name").textContent = "Unknown User";
+          document.getElementById("user-username").textContent = "";
         }
       } catch (err) {
         console.error("Error fetching recipient:", err);
-        document.getElementById("recipient-name").textContent = "Error";
+        document.getElementById("user-display-name").textContent = "Error";
+        document.getElementById("user-username").textContent = "";
+      }
+    }
+
+    // Update user status based on last activity
+    function updateUserStatus(logdate) {
+      const statusElement = document.getElementById("user-status");
+      if (!logdate) {
+        statusElement.textContent = "offline";
+        statusElement.style.color = "rgba(239, 68, 68, 0.8)";
+        return;
+      }
+
+      const lastActivity = new Date(logdate);
+      const now = new Date();
+      const diffMinutes = Math.floor((now - lastActivity) / (1000 * 60));
+
+      if (diffMinutes < 5) {
+        statusElement.textContent = "online";
+        statusElement.style.color = "rgba(34, 197, 94, 0.8)";
+      } else if (diffMinutes < 60) {
+        statusElement.textContent = `last seen ${diffMinutes}m ago`;
+        statusElement.style.color = "rgba(245, 158, 11, 0.8)";
+      } else if (diffMinutes < 1440) {
+        const hours = Math.floor(diffMinutes / 60);
+        statusElement.textContent = `last seen ${hours}h ago`;
+        statusElement.style.color = "rgba(245, 158, 11, 0.8)";
+      } else {
+        const days = Math.floor(diffMinutes / 1440);
+        statusElement.textContent = `last seen ${days}d ago`;
+        statusElement.style.color = "rgba(239, 68, 68, 0.8)";
       }
     }
 
     // Join user room
     socket.emit("joinUserRoom", authToken);
 
-    // <CHANGE> Load messages with loading indicator
+    // Load messages with enhanced loading indicator
     async function loadMessages(before = null) {
       if (isLoading) return;
       isLoading = true;
 
-      // Show loading indicator for older messages
       if (before) {
         const loadingDiv = document.createElement('div');
         loadingDiv.className = 'upload-progress';
@@ -797,7 +1024,6 @@
             noMessagesDiv.style.display = "block";
           } else {
             noMessagesDiv.style.display = "none";
-            // <CHANGE> Reverse messages to show newest at bottom
             renderMessages(data.reverse(), recipientId, !before);
             if (data.length > 0) {
               earliestTimestamp = data[0].timestamp;
@@ -812,7 +1038,6 @@
         showCustomAlert("Error", "Error fetching messages");
       } finally {
         isLoading = false;
-        // Remove loading indicator
         const loadingDiv = document.getElementById('loading-messages');
         if (loadingDiv) loadingDiv.remove();
       }
@@ -847,7 +1072,6 @@
         const isSender = (msg.senderId !== Number(recipientId));
         div.classList.add(isSender ? "sent" : "received");
         
-        // <CHANGE> Add verified message styling
         if (msg.senderVerified) {
           div.classList.add("verified-message");
         }
@@ -856,7 +1080,7 @@
         content += `
           <div class="username">
             ${escapeHtml(msg.senderName || msg.senderUsername || "Unknown")}
-            ${msg.senderVerified ? '<span class="verified-icon">✓</span>' : ''}
+            ${msg.senderVerified ? '<div class="verified-icon"></div>' : ''}
           </div>
         `;
 
@@ -880,7 +1104,7 @@
               <div class="reply-preview">
                 ${mediaPreview}
                 ${escapeHtml(replyData.senderName || replyData.senderUsername || "Unknown")}
-                ${replyData.senderVerified ? '<span class="verified-icon">✓</span>' : ''}: 
+                ${replyData.senderVerified ? '<div class="verified-icon"></div>' : ''}: 
                 ${escapeHtml(replyText.slice(0, 50))}${replyText.length > 50 ? "..." : ""}
               </div>
             `;
@@ -893,10 +1117,8 @@
           } else if (msg.fileType?.startsWith("image")) {
             content += `<img src="${msg.fileUrl}" alt="Image">`;
           } else if (msg.fileType?.startsWith("video")) {
-            // <CHANGE> Enhanced video controls
             content += `<video controls preload="metadata" src="${msg.fileUrl}"></video>`;
           } else if (msg.fileType?.startsWith("audio")) {
-            // <CHANGE> Enhanced audio controls
             content += `<audio controls preload="metadata" src="${msg.fileUrl}"></audio>`;
           } else {
             content += `<a href="${msg.fileUrl}" target="_blank">Download file</a>`;
@@ -930,7 +1152,7 @@
             const replyDiv = document.createElement("div");
             replyDiv.classList.add("message", "received");
             replyDiv.style.marginLeft = "30px";
-            replyDiv.style.background = "rgba(255, 255, 255, 0.03)";
+            replyDiv.style.background = "rgba(255, 255, 255, 0.04)";
             replyDiv.dataset.messageId = reply.id;
 
             if (reply.senderVerified) {
@@ -940,7 +1162,7 @@
             let replyContent = `
               <div class="username">
                 ${escapeHtml(reply.senderName || reply.senderUsername || "Unknown")}
-                ${reply.senderVerified ? '<span class="verified-icon">✓</span>' : ''}
+                ${reply.senderVerified ? '<div class="verified-icon"></div>' : ''}
               </div>
             `;
 
@@ -1010,14 +1232,23 @@
       renderMessages([msg], recipientId, true);
     });
 
-    // Typing indicator
+    // Enhanced typing indicator
     socket.on("showTyping", ({ users }) => {
       const typingIndicator = document.getElementById("typing-indicator");
       if (users.length > 0) {
         const names = users.map(u => (u.name || u.username) + (u.verified ? ' ✓' : '')).join(", ");
         typingIndicator.textContent = `${names} ${users.length > 1 ? "are" : "is"} typing...`;
+        // Update user status to "typing..."
+        if (users.some(u => u.id == recipientId)) {
+          document.getElementById("user-status").textContent = "typing...";
+          document.getElementById("user-status").style.color = "rgba(20, 184, 166, 0.8)";
+        }
       } else {
         typingIndicator.textContent = "";
+        // Restore normal status
+        if (recipientData) {
+          updateUserStatus(recipientData.logdate);
+        }
       }
     });
 
@@ -1045,11 +1276,10 @@
       }
     }
 
-    // <CHANGE> Send sticker with loading indicator
+    // Send sticker with enhanced loading indicator
     async function sendSticker(url) {
       sendButton.disabled = true;
       
-      // Show upload progress
       const progressDiv = document.createElement('div');
       progressDiv.className = 'upload-progress';
       progressDiv.innerHTML = '<div class="loading-spinner"></div> Sending sticker...';
@@ -1149,18 +1379,16 @@
       isSticker = false;
     }
 
-    // <CHANGE> Enhanced send message with validation and loading
+    // Enhanced send message with validation and loading
     async function sendMessage() {
       const text = messageInput.value.trim();
       const file = fileInput.files[0];
       
-      // <CHANGE> Prevent empty messages
       if (!text && !file) {
         showCustomAlert("Empty Message", "Please enter a message or select a file to send.");
         return;
       }
       
-      // <CHANGE> Character limit validation
       if (text.length > MAX_CHARS) {
         showCustomAlert("Message Too Long", `Message exceeds ${MAX_CHARS} character limit.`);
         return;
@@ -1168,7 +1396,6 @@
       
       sendButton.disabled = true;
       
-      // Show upload progress
       const progressDiv = document.createElement('div');
       progressDiv.className = 'upload-progress';
       progressDiv.innerHTML = '<div class="loading-spinner"></div> Sending message...';
@@ -1227,7 +1454,7 @@
       }
     }
 
-    // <CHANGE> Character counter update function
+    // Character counter update function
     function updateCharCounter() {
       const length = messageInput.value.length;
       charCounter.textContent = `${length}/${MAX_CHARS}`;
@@ -1252,7 +1479,7 @@
       }
     });
 
-    // <CHANGE> Enhanced input handling with character counter
+    // Enhanced input handling with character counter
     messageInput.addEventListener("input", () => {
       messageInput.style.height = "auto";
       messageInput.style.height = `${Math.min(messageInput.scrollHeight, 150)}px`;
@@ -1299,6 +1526,13 @@
     loadMessages();
     loadStickers();
     updateCharCounter();
+
+    // Update user status periodically
+    setInterval(() => {
+      if (recipientData) {
+        updateUserStatus(recipientData.logdate);
+      }
+    }, 30000); // Update every 30 seconds
   </script>
 </body>
 </html>
