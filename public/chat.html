@@ -873,7 +873,7 @@
     // Fetch recipient details
     async function fetchRecipient() {
       try {
-        const res = await fetch(`/user/id/478135254`); // Use the specified endpoint
+        const res = await fetch(`/user/id/${recipientId}`); // Use the specified endpoint
         const data = await res.json();
         if (res.ok) {
           recipientData = data;
